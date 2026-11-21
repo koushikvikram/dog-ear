@@ -1,0 +1,15 @@
+# Used by `supabase start` (local dev) and `supabase link` / `supabase config push`.
+project_id = "dog-ear"
+
+[auth]
+enable_signup = false          # invite-only: nobody can create an account on their own
+site_url = "http://localhost:5173/"
+additional_redirect_urls = ["http://localhost:5173/", "https://YOUR-USER.github.io/YOUR-REPO/"]
+
+[auth.email]
+enable_signup = false
+double_confirm_changes = true
+enable_confirmations = true
+
+[functions.invite-user]
+verify_jwt = true
