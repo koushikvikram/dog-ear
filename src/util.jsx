@@ -21,7 +21,8 @@ export const go = path => { window.location.hash = '#' + path }
 export const uid = () => (crypto.randomUUID ? crypto.randomUUID() :
   'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => { const r = Math.random() * 16 | 0; return (c === 'x' ? r : (r & 3 | 8)).toString(16) }))
 
-export const firstName = c => (c.name || '').split(' ')[0]
+// "Dr. Anselm Pike" → "Anselm", "Lord Calder Ashgrove" → "Calder": titles are skipped, as the design does.
+export const firstName = c => (c.name || '').trim().replace(/^(Dr\.?|Mr\.?|Mrs\.?|Ms\.?|Miss|Lord|Lady|Sir|Dame|Old|Captain|Capt\.?)\s+/i, '').split(/\s+/)[0]
 
 const days = iso => Math.floor((Date.now() - new Date(iso)) / 864e5)
 const span = d => d <= 0 ? 'today' : d === 1 ? 'yesterday' : d < 14 ? `${d} days ago` : d < 60 ? `${Math.round(d / 7)} weeks ago` : `${Math.round(d / 30)} months ago`

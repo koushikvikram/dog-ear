@@ -75,7 +75,7 @@ export default function Book({ bookId }) {
         <div style={{ minWidth: 0 }}>
           <h1 className="desktop-title" style={{ margin: 0, letterSpacing: '-0.02em' }}>{d.book.title}</h1>
           <div style={{ marginTop: 6, fontSize: 14, color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-            {d.book.author && <span>{d.book.author} {'·'}</span>}{subline}{sync}
+            {subline}{sync}
           </div>
         </div>
         {actions}
