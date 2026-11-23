@@ -48,13 +48,8 @@ body {
 
 /* ---------- Small app helpers ---------- */
 .app-drawer-body { padding: var(--space-8) var(--space-24) var(--space-28); display: flex; flex-direction: column; gap: var(--space-16); }
-.app-stack { display: flex; flex-direction: column; gap: var(--space-14); }
-.app-row { display: flex; align-items: center; gap: var(--space-8); }
 .app-wrap { display: flex; flex-wrap: wrap; gap: var(--space-6); }
-.app-muted { color: var(--text-muted); }
 .app-meta { font-size: 13px; line-height: 1.5; color: var(--text-muted); }
-.app-rel { position: relative; }
-.app-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 .app-chips-scroll { display: flex; gap: var(--space-6); overflow-x: auto; scrollbar-width: none; }
 .app-chips-scroll::-webkit-scrollbar { display: none; }
 .app-quote { font-family: var(--font-serif); font-style: italic; }

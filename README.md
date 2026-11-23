@@ -66,19 +66,25 @@ Follow the sections in this order. Each step needs something from the one before
 
 ```
 .github/workflows/deploy.yml     builds and publishes to GitHub Pages on every push to main
+docs/                            the design system (zip) and its interactive demo
 src/                             the React app (hash routing, so deep links work on Pages)
-  pages/  Landing, Library, Book, Admin
-  components/  Highlights, Characters (graph), Lexicon
+  design-system/                 the vendored design system: tokens, components, types
+  ui/                            app glue: platform switch, palettes, drawers/sheets, account menu
+  app.css                        fits the design system's fixed artboards to a real viewport
+  pages/  Landing, Library, Book (+ useBookData), Admin
+  components/  Highlights, Characters (+ graph geometry), Lexicon
   offline.js                     IndexedDB queue for highlights captured with no signal
 supabase/
-  migrations/                    the schema, in order: tables, RLS, functions
-  setup.sql                      the same three files joined, for pasting into the SQL editor
+  migrations/                    the schema, in order: tables, RLS, functions, design-system additions
+  setup.sql                      the same files joined, for pasting into the SQL editor
   functions/invite-user/         Edge Function that approves invite requests
   config.toml                    auth settings used by the Supabase CLI
 .env.example                     the two public values the app needs
 ```
 
 The database design matches the "Dog-Ear: Data Model (Supabase)" document table for table.
+
+**The interface** is built from the Dog-Ear design system in `docs/design_system.zip` (open `docs/design_system_demo.html` to try every screen). Its generated files are copied unchanged into `src/design-system/` and imported as ES modules; `src/design-system/README.md` says how to refresh them. The system has two platforms with no responsive CSS, so the app picks one at runtime: phone layouts below 768px wide, desktop layouts above. Fonts (Manrope, Source Serif 4) are bundled with the app, not loaded from Google.
 
 ---
 
@@ -115,6 +121,8 @@ npx supabase login
 npx supabase link --project-ref YOUR-PROJECT-REF     # the abcdxyz part of the URL
 npx supabase db push                                  # applies supabase/migrations/* in order
 ```
+
+**Already set up before the design-system update?** Apply just `supabase/migrations/20261122000000_design_system.sql` (paste it into the SQL editor, or `npx supabase db push`). It lets new books store a cover colour, gives your existing books one, and indexes the dictionary for suggestions as you type.
 
 Check it worked: **Table Editor** should list `books`, `characters`, `ties`, `tie_types`, `words`, `highlights`, `highlight_labels`, `highlight_characters`, `dictionary`, `profiles`, `invite_requests`, each with an "RLS enabled" badge. If any table shows RLS disabled, stop and fix that before going further.
 
@@ -355,12 +363,12 @@ npm run build                    # production build into dist/
 
 ## 6. Running it day to day
 
-- **Invites.** Account menu → **Invite requests** → **Approve** (sends the email) or **Decline** (sends nothing, with an Undo). A declined request can be moved back to pending. Requests stay **pending** until you act: the app does not notify you of new ones, so check the screen now and then. Approving an address that already has an account says so instead of sending a second invite.
+- **Invites.** Account menu → **Invite requests** (on a computer; on a phone, open `#/admin`) → **Approve** (sends the email) or **Decline** (sends nothing, with an Undo). A declined request can be moved back to pending. Requests stay **pending** until you act: the app does not notify you of new ones, so check the screen now and then. Approving an address that already has an account says so instead of sending a second invite.
 - **Deleting a book** is soft: it disappears and shows an Undo for a few seconds, and a daily `pg_cron` job removes books deleted more than a day ago. Deleting a character, tie, highlight, word or label waits about six seconds before the request is sent, so Undo cancels it cleanly. If you close the tab inside that window the delete is simply not sent.
 - **Offline capture.** Highlights saved with no signal are kept in the browser (IndexedDB) and sent when the connection returns; the chip beside the book title shows how many are waiting. Client-made ids make retries safe.
 - **Your data.** Account menu → **Export my data** downloads everything you own as JSON.
 - **Voice dictation** uses the browser's Web Speech API (Chrome, Edge, Safari). It needs microphone permission and, in Chrome, an internet connection. Firefox has no support; the mic button explains that.
-- **Dictionary.** Definitions come from the free `dictionaryapi.dev` service and are cached in the shared `dictionary` table, so repeat lookups are instant and work offline.
+- **Dictionary.** Definitions come from the free `dictionaryapi.dev` service and are cached in the shared `dictionary` table, so repeat lookups are instant and work offline. Suggestions as you type come from that cache; a word it has never seen is looked up when you type it in full, and a word the dictionary does not know can still be added.
 - **Backups.** Supabase's free plan has no point-in-time backups. Use Export my data now and then, or `npx supabase db dump` from the CLI.
 - **Free-plan note.** Supabase pauses free projects after a week without activity. Open the app weekly, or upgrade.
 - **Removing someone.** **Authentication → Users → Delete**. Everything they own is deleted with them (`on delete cascade`).

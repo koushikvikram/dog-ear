@@ -1,6 +1,5 @@
 import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react'
 import { Toast } from './design-system/index.js'
-export { TIE_COLORS, tieColor, tieDash, LABEL_COLORS, labelColor } from './ui/palette.js'
 
 /* ---------- hash routing (GitHub Pages has no server rewrites) ---------- */
 export function useRoute() {
@@ -75,7 +74,6 @@ export function ToastProvider({ children }) {
 
 /* ---------- voice dictation (Web Speech API) ---------- */
 const SR = typeof window !== 'undefined' && (window.SpeechRecognition || window.webkitSpeechRecognition)
-export const dictationSupported = Boolean(SR)
 
 export function useDictation(onText, onError) {
   const rec = useRef(null)
@@ -102,39 +100,3 @@ export function useDictation(onText, onError) {
   return { listening, toggle: () => (listening ? stop() : start()) }
 }
 export const joinText = (cur, add) => (cur && !/\s$/.test(cur) ? cur + ' ' : cur || '') + add
-
-/* ---------- legacy helpers, removed once every screen is on the design system ---------- */
-export function Dialog({ title, onClose, children, footer, wide }) {
-  const ref = useRef()
-  useEffect(() => {
-    const f = e => e.key === 'Escape' && onClose()
-    window.addEventListener('keydown', f)
-    const first = ref.current?.querySelector('input,textarea,select')
-    first && first.focus()
-    return () => window.removeEventListener('keydown', f)
-  }, [onClose])
-  return (
-    <div className="scrim" onMouseDown={e => e.target === e.currentTarget && onClose()}>
-      <div className="dlg" role="dialog" aria-modal="true" aria-label={title} ref={ref} style={wide ? { maxWidth: 560 } : null}>
-        <h2>{title}</h2>
-        {children}
-        {footer && <div className="foot">{footer}</div>}
-      </div>
-    </div>
-  )
-}
-export const Err = ({ children }) => children ? <p className="err" role="alert">{children}</p> : null
-export function Field({ label, children }) {
-  return <label className="fld">{label}{children}</label>
-}
-export function Mic({ onText, onError, label = 'Dictate' }) {
-  const { listening, toggle } = useDictation(onText, onError)
-  return (
-    <button type="button" className={'mic' + (listening ? ' on' : '')} onClick={toggle} aria-pressed={listening}
-      aria-label={listening ? 'Stop dictation' : label} title={listening ? 'Listening… tap to stop' : label}>
-      <svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" aria-hidden="true">
-        <rect x="7" y="2.5" width="6" height="10" rx="3" /><path d="M4 9.5a6 6 0 0 0 12 0M10 15.5V18" />
-      </svg>
-    </button>
-  )
-}

@@ -223,7 +223,6 @@ export function useBookData(bookId) {
     },
 
     /* words */
-    loadWords: async () => '',
     async addWord(word) {
       if (s.words.some(w => w.word.toLowerCase() === word.toLowerCase())) return 'That word is already in your list.'
       const row = { id: uid(), book_id: bookId, word, created_at: new Date().toISOString() }

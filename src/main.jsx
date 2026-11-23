@@ -9,7 +9,6 @@ import '@fontsource/source-serif-4/400.css'
 import '@fontsource/source-serif-4/600.css'
 import '@fontsource/source-serif-4/400-italic.css'
 import './design-system/index.js'
-import './styles.css'
 import './app.css'
 import App from './App.jsx'
 
