@@ -26,6 +26,10 @@ body {
 .de-toast--mobile { bottom: calc(16px + env(safe-area-inset-bottom)); }
 .de-toast--tabbar { bottom: calc(76px + env(safe-area-inset-bottom)); }
 
+/* The canvas layers its own toolbar (z 7), popover (z 8) and nodes; keep those inside it so a drawer or
+   dialog (z 6–7) is never drawn under the canvas toolbar. */
+.de-canvas { isolation: isolate; }
+
 /* Phone safe areas (notch, home indicator). */
 .de-appheader { padding-top: env(safe-area-inset-top); height: calc(var(--size-header-mobile) + env(safe-area-inset-top)); }
 .de-tabbar { padding-bottom: env(safe-area-inset-bottom); height: calc(var(--size-tabbar-mobile) + env(safe-area-inset-bottom)); }

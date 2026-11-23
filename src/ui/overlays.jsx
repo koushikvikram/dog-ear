@@ -29,7 +29,7 @@ function useFirstFocus(ref, enabled = true) {
     'bottom'  phone Your books: the same drawer docked at the bottom, behind a scrim
     'sheet'   phone Book: a sheet above the tab bar, no scrim, titled with a noun
 */
-export function FormOverlay({ kind = 'drawer', title, onClose, children, actions, focus = true, label, tall }) {
+export function FormOverlay({ kind = 'drawer', title, onClose, children, actions, focus = true, label, tall, head }) {
   const ref = useRef()
   useEscape(onClose)
   useFirstFocus(ref, focus)
@@ -37,7 +37,7 @@ export function FormOverlay({ kind = 'drawer', title, onClose, children, actions
     return (
       <Sheet label={label || (typeof title === 'string' ? title : 'Details')} className={tall ? 'app-sheet--tall' : null}>
         <div ref={ref} style={{ display: 'contents' }}>
-          <SheetHeader title={title} onClose={onClose} actions={actions} />
+          {head || <SheetHeader title={title} onClose={onClose} actions={actions} />}
           {children}
         </div>
       </Sheet>
