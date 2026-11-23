@@ -1,7 +1,10 @@
-import React, { useEffect, useRef, useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { supabase, configured } from './supabase.js'
-import { ToastProvider, useRoute, go, useToast } from './util.jsx'
+import { ToastProvider, useRoute } from './util.jsx'
 import { flush } from './offline.js'
+import { AppShell, Container, EmptyState, ScrollArea } from './design-system/index.js'
+import { SessionCtx, TopRow } from './ui/chrome.jsx'
+import { usePlatform } from './ui/usePlatform.js'
 import Landing from './pages/Landing.jsx'
 import Library from './pages/Library.jsx'
 import Admin from './pages/Admin.jsx'
@@ -42,7 +45,7 @@ function Shell() {
 
   useEffect(() => { const f = () => flush(); window.addEventListener('online', f); return () => window.removeEventListener('online', f) }, [])
 
-  if (session === undefined) return <div className="app" style={{ display: 'grid', placeItems: 'center' }}><p className="mute">Loading…</p></div>
+  if (session === undefined) return <Message>Loading…</Message>
 
   if (!session) {
     // remember a deep link so we can return to the book after sign-in
@@ -56,76 +59,35 @@ function Shell() {
   else if (path === '/admin') page = isAdmin ? <Admin /> : <NotAllowed />
   else page = <Library />
 
-  return (
-    <div className="app">
-      <TopBar session={session} isAdmin={isAdmin} />
-      {page}
-    </div>
-  )
+  return <SessionCtx.Provider value={{ email: session.user.email || '', isAdmin }}>{page}</SessionCtx.Provider>
 }
 
-function TopBar({ session, isAdmin }) {
-  const [open, setOpen] = useState(false)
-  const [err, setErr] = useState('')
-  const ref = useRef()
-  const toast = useToast()
-  useEffect(() => {
-    const f = e => ref.current && !ref.current.contains(e.target) && setOpen(false)
-    document.addEventListener('mousedown', f); return () => document.removeEventListener('mousedown', f)
-  }, [])
-
-  async function exportData() {
-    setOpen(false); setErr('')
-    const { data, error } = await supabase.rpc('export_my_data')
-    if (error) { setErr('Could not export your data. ' + error.message); return }
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
-    const a = document.createElement('a')
-    a.href = URL.createObjectURL(blob); a.download = 'dog-ear-export-' + new Date().toISOString().slice(0, 10) + '.json'
-    a.click(); URL.revokeObjectURL(a.href)
-    toast('Export downloaded')
-  }
-  const email = session.user.email || ''
-  return (
-    <header className="top">
-      <button className="brand" onClick={() => go('/')} aria-label="Dog-Ear, your books">
-        <svg width="22" height="22" viewBox="0 0 32 32" aria-hidden="true"><path d="M7 4h12l6 6v18H7z" fill="#ECECEE" /><path d="M19 4v6h6z" fill="#7DD3A8" /></svg>
-        Dog-Ear
-      </button>
-      <div className="grow" />
-      {err && <span className="err" role="alert" style={{ margin: 0 }}>{err}</span>}
-      <div className="rel" ref={ref}>
-        <button className="btn sm ghost" onClick={() => setOpen(o => !o)} aria-haspopup="menu" aria-expanded={open}>
-          <span className="pill" style={{ background: '#16342A', color: '#7DD3A8' }}>{(email[0] || '?').toUpperCase()}</span>
-          <span className="mute" style={{ maxWidth: 180, overflow: 'hidden', textOverflow: 'ellipsis' }}>{email}</span>
-        </button>
-        {open && (
-          <div className="menu" role="menu">
-            <div className="who">{email}</div>
-            <button role="menuitem" onClick={exportData}>Export my data</button>
-            {isAdmin && <button role="menuitem" onClick={() => { setOpen(false); go('/admin') }}>Invite requests</button>}
-            <button role="menuitem" onClick={async () => { setOpen(false); await supabase.auth.signOut(); go('/') }}>Sign out</button>
-          </div>
-        )}
+// A plain full-screen page in the design-system frame: Loading, Admins only, Almost there.
+function Message({ title, children }) {
+  const m = usePlatform() === 'mobile'
+  const body = (
+    <>
+      <TopRow />
+      <div style={{ padding: m ? '28px 0 0' : '40px 0 0', maxWidth: 640 }}>
+        {title && <h1 className={m ? 'mobile-title' : 'desktop-title'} style={{ margin: '0 0 6px' }}>{title}</h1>}
+        <EmptyState style={{ margin: 0 }}>{children}</EmptyState>
       </div>
-    </header>
+    </>
   )
+  return m
+    ? <AppShell platform="mobile"><ScrollArea style={{ padding: 'max(20px, env(safe-area-inset-top)) 20px 32px' }}>{body}</ScrollArea></AppShell>
+    : <AppShell><Container style={{ padding: '32px 40px 56px' }}>{body}</Container></AppShell>
 }
 
 function NotAllowed() {
-  return (
-    <main className="page">
-      <h1 className="serif">Admins only</h1>
-      <p className="mute">This page is for the person who runs this Dog-Ear. <a href="#/">Back to your books</a></p>
-    </main>
-  )
+  return <Message title="Admins only">This page is for the person who runs this Dog-Ear. <a href="#/" style={{ color: 'var(--accent)' }}>Back to your books</a></Message>
 }
 
 function Setup() {
   return (
-    <main className="page" style={{ maxWidth: 640 }}>
-      <h1 className="serif">Almost there</h1>
-      <p>This build has no Supabase project attached. Set <code>VITE_SUPABASE_URL</code> and <code>VITE_SUPABASE_ANON_KEY</code>
-        (in <code>.env.local</code> for local work, or as repository variables for GitHub Pages) and rebuild. The README walks through it.</p>
-    </main>
+    <Message title="Almost there">
+      This build has no Supabase project attached. Set <code>VITE_SUPABASE_URL</code> and <code>VITE_SUPABASE_ANON_KEY</code> (in{' '}
+      <code>.env.local</code> for local work, or as repository variables for GitHub Pages) and rebuild. The README walks through it.
+    </Message>
   )
 }
