@@ -29,7 +29,8 @@ body {
 /* Phone safe areas (notch, home indicator). */
 .de-appheader { padding-top: env(safe-area-inset-top); height: calc(var(--size-header-mobile) + env(safe-area-inset-top)); }
 .de-tabbar { padding-bottom: env(safe-area-inset-bottom); height: calc(var(--size-tabbar-mobile) + env(safe-area-inset-bottom)); }
-.de-sheet { bottom: calc(var(--size-tabbar-mobile) + env(safe-area-inset-bottom)); max-height: min(520px, calc(100dvh - 140px)); }
+/* Sheets dock above the tab bar wherever they sit in the tree (the body scrolls, the shell does not). */
+.de-sheet { position: fixed; bottom: calc(var(--size-tabbar-mobile) + env(safe-area-inset-bottom)); max-height: min(520px, calc(100dvh - 140px)); }
 .de-sheet.app-sheet--tall { max-height: min(600px, calc(100dvh - 140px)); }
 .de-scroll { padding-top: max(var(--space-16), env(safe-area-inset-top)); padding-bottom: calc(var(--space-40) + env(safe-area-inset-bottom)); }
 
