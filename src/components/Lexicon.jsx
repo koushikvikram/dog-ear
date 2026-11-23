@@ -41,8 +41,8 @@ const offlineMsg = () => (navigator.onLine ? 'Could not reach the dictionary. Tr
    still has a definition when dictionaryapi.dev does not know it. */
 const DM_POS = { n: 'noun', v: 'verb', adj: 'adjective', adv: 'adverb' }
 const dmEntries = new Map()
-async function datamuse(w, signal) {
-  const r = await fetch('https://api.datamuse.com/words?sp=' + encodeURIComponent(w.replace(/[*?#@,]/g, '')) + '*&md=dpr&ipa=1&max=20', { signal })
+async function datamuse(w) {
+  const r = await fetch('https://api.datamuse.com/words?sp=' + encodeURIComponent(w.replace(/[*?#@,]/g, '')) + '*&md=dpr&ipa=1&max=20')
   if (!r.ok) throw new Error('datamuse failed')
   return (await r.json())
     .filter(x => /^[a-z][a-z'-]*$/.test(x.word) && x.defs?.length)
@@ -53,6 +53,19 @@ async function datamuse(w, signal) {
       dmEntries.set(x.word, entry)
       return entry
     })
+}
+
+// One Datamuse request per prefix per visit: retyping or backspacing to letters already searched costs
+// nothing, and a request still in flight is shared. Failures are forgotten so the next try asks again.
+const dmPrefix = new Map()
+function datamuseOnce(w) {
+  let p = dmPrefix.get(w)
+  if (!p) {
+    p = datamuse(w).catch(e => { dmPrefix.delete(w); throw e })
+    dmPrefix.set(w, p)
+    if (dmPrefix.size > 200) dmPrefix.delete(dmPrefix.keys().next().value) // keep the memo small
+  }
+  return p
 }
 
 // A saved word's entry: the cache or dictionaryapi.dev, else what Datamuse gave for it (cached for next time).
@@ -71,12 +84,11 @@ function useSuggestions(q, limit) {
     const w = norm(q)
     if (!w) { setS({ items: [], busy: false, err: '' }); return }
     let live = true
-    const ctl = new AbortController()
     setS(x => ({ ...x, busy: true, err: '' }))
     const t = setTimeout(async () => {
       const [cachedRes, dmRes] = await Promise.allSettled([
         supabase.from('dictionary').select('word, entry').like('word', escapeLike(w) + '%').order('word').limit(limit),
-        w.length >= 2 ? datamuse(w, ctl.signal) : Promise.resolve([]),
+        w.length >= 2 ? datamuseOnce(w) : Promise.resolve([]),
       ])
       if (!live) return
       const cached = new Map((cachedRes.status === 'fulfilled' ? cachedRes.value.data || [] : []).map(c => [c.word, c.entry]))
@@ -98,8 +110,8 @@ function useSuggestions(q, limit) {
       } catch {
         if (live) setS({ items: [...items, { word: w, pos: '', def: NO_DEF }].slice(0, limit), busy: false, err: offlineMsg() })
       }
-    }, 250)
-    return () => { live = false; clearTimeout(t); ctl.abort() }
+    }, dmPrefix.has(w) ? 0 : 250) // already fetched: no need to wait for a pause in typing
+    return () => { live = false; clearTimeout(t) }
   }, [q, limit])
   return s
 }
