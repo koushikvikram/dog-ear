@@ -1,150 +1,292 @@
-import React, { useState } from 'react'
-import { Dialog, Err, Field, LABEL_COLORS, Mic, firstName, joinText, labelColor } from '../util.jsx'
+import React, { useEffect, useRef, useState } from 'react'
+import {
+  Badge, Button, Chip, EmptyState, ErrorText, Eyebrow, Field, HighlightCard, HighlightRow, MicButton, MicPill, Panel,
+  SwatchRow, TextArea, TextButton, TextInput,
+} from '../design-system/index.js'
+import { firstName, joinText, useDictation, useToast } from '../util.jsx'
+import { FormOverlay } from '../ui/overlays.jsx'
+import { LABEL_COLORS, UNLABELLED, labelColor } from '../ui/palette.js'
 
-export default function Highlights({ d, onQueued }) {
+const digits = v => v.replace(/\D/g, '')
+const chipRow = { display: 'flex', flexWrap: 'wrap', gap: 6 }
+const cap = { fontSize: 12, color: 'var(--text-muted)', marginBottom: 6 }
+const toggle = (list, id) => (list.includes(id) ? list.filter(x => x !== id) : [...list, id])
+
+export default function Highlights({ d, platform, header, onQueued }) {
+  const m = platform === 'mobile'
+  const toast = useToast()
   const [page, setPage] = useState(''), [note, setNote] = useState(''), [quote, setQuote] = useState('')
   const [showQ, setShowQ] = useState(false), [showM, setShowM] = useState(false)
   const [labelId, setLabelId] = useState(d.labels[0]?.id || ''), [mentions, setMentions] = useState([])
   const [msg, setMsg] = useState(''), [filter, setFilter] = useState('all')
-  const [edit, setEdit] = useState(null), [labelsOpen, setLabelsOpen] = useState(false)
+  const [form, setForm] = useState(null)       // { h } edit | { draft } new (desktop drawer)
+  const [labelsOpen, setLabelsOpen] = useState(false)
+  const dict = useDictation(t => { setNote(n => joinText(n, t)); setMsg('') }, setMsg)
+
+  useEffect(() => { if (labelId && !d.labels.some(l => l.id === labelId)) setLabelId('') }, [d.labels, labelId])
+  useEffect(() => { if (filter !== 'all' && filter !== 'none' && !d.labels.some(l => l.id === filter)) setFilter('all') }, [d.labels, filter])
 
   async function save() {
     const p = page.trim()
-    if (!/^\d+$/.test(p) || Number(p) < 1) return setMsg('Add the page number first.')
+    if (!p || Number(p) < 1) return setMsg('Add the page number first.')
     if (!note.trim() && !quote.trim()) return setMsg('Add a thought or a quote.')
     setMsg('')
     const r = await d.addHighlight({ page: p, note: note.trim(), quote: quote.trim(), labelId, mentions })
-    if (!r.ok) return setMsg('Could not save. ' + r.message)
+    if (!r.ok) return setMsg(r.message)
     onQueued && onQueued()
-    setNote(''); setQuote(''); setMentions([]); setShowQ(false); setShowM(false)
+    if (m || r.queued) toast(r.queued ? 'Saved on this device. Will sync when online.' : 'Highlight saved')
     // keep the page: the next thought is usually on the same or the next page
+    setNote(''); setQuote(''); setMentions([]); setShowQ(false); setShowM(false)
   }
   const onKey = e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); save() } }
-  const label = id => d.labels.find(l => l.id === id)
-  const shown = d.highlights.filter(h => filter === 'all' || (filter === 'none' ? !h.label_id : h.label_id === filter))
-  const charName = id => { const c = d.characters.find(c => c.id === id); return c ? c.name : null }
 
+  const label = id => d.labels.find(l => l.id === id)
+  const labelOf = h => { const l = label(h.label_id); return l ? { name: l.name, color: labelColor(l.color_index) } : { name: 'Unlabelled', color: UNLABELLED } }
+  const names = h => (h.mentions || []).map(id => d.characters.find(c => c.id === id)).filter(Boolean).map(firstName).join(', ')
+  const labelText = h => h.pending ? <>{labelOf(h).name} <Badge tone="pending" style={{ marginLeft: 6 }}>Waiting to sync</Badge></> : labelOf(h).name
+
+  const thoughtLabel = <span style={{ color: dict.listening ? 'var(--accent)' : undefined }}>{dict.listening ? 'Listening…' : 'Your thought'}</span>
+  const mentionToggle = showM ? 'Hide characters' : mentions.length ? 'Characters (' + mentions.length + ')' : '+ Who is in it?'
+  const size = m ? 'touch' : 'md'
+
+  const capture = (
+    <Panel platform={platform} style={{ marginTop: m ? 0 : 24, display: 'flex', flexDirection: 'column', gap: 12 }} aria-label="Quick capture">
+      <Eyebrow>{m ? 'Quick capture' : 'Quick capture from your book'}</Eyebrow>
+      <div style={{ display: 'flex', gap: m ? 10 : 12, alignItems: 'stretch' }}>
+        <Field platform={platform} label="Page" style={{ flex: 'none', width: m ? 84 : 92 }}>
+          <TextInput pageNumber ground={m ? 'page' : 'card'} size={m ? 'lg' : 'md'} inputMode="numeric" placeholder={m ? '42' : '142'} value={page}
+            onChange={e => { setPage(digits(e.target.value)); setMsg('') }}
+            style={{ flex: 1, width: '100%', fontSize: m ? 22 : 24, fontWeight: 700, padding: '0 8px' }} />
+        </Field>
+        <Field platform={platform} label={thoughtLabel} style={{ flex: 1, minWidth: 0 }}>
+          <span style={{ position: 'relative', display: 'flex', flex: 1 }}>
+            <TextArea size={m ? 'lg' : 'md'} placeholder="What stuck with you?" value={note} onKeyDown={onKey}
+              onChange={e => { setNote(e.target.value); setMsg('') }}
+              style={{ minHeight: 96, flex: 1, paddingRight: 58, resize: 'none', borderColor: dict.listening ? 'var(--accent)' : undefined }} />
+            <MicButton on={dict.listening} label={dict.listening ? 'Stop dictation' : 'Dictate'} onClick={dict.toggle}
+              style={{ position: 'absolute', right: 6, bottom: 6 }} />
+          </span>
+        </Field>
+      </div>
+      <div style={{ display: 'flex', gap: m ? 18 : 20, flexWrap: 'wrap', marginTop: -4 }}>
+        <TextButton onClick={() => { setShowQ(!showQ); if (showQ) setQuote('') }} aria-expanded={showQ}>{showQ ? 'Remove quote' : '+ Add quote'}</TextButton>
+        {d.characters.length > 0 && <TextButton onClick={() => setShowM(!showM)} aria-expanded={showM}>{mentionToggle}</TextButton>}
+      </div>
+      {showQ && (
+        <Field platform={platform} label="Quote from the page">
+          <TextArea size={m ? 'lg' : 'md'} className="app-quote" placeholder="The exact words, if you want them" value={quote}
+            onChange={e => { setQuote(e.target.value); setMsg('') }} style={{ minHeight: m ? 72 : 76, resize: 'none', fontSize: 16 }} />
+        </Field>
+      )}
+      {showM && (
+        <div>
+          {m ? <div style={cap}>Who is in it?</div> : <Eyebrow style={{ marginBottom: 8 }}>Who is in it?</Eyebrow>}
+          <div role="group" aria-label="Characters in this highlight" style={chipRow}>
+            {d.characters.map(c => <Chip key={c.id} size={size} selected={mentions.includes(c.id)} onClick={() => setMentions(x => toggle(x, c.id))}>{firstName(c)}</Chip>)}
+          </div>
+        </div>
+      )}
+      <div style={m ? null : { ...chipRow, gap: 8, alignItems: 'center' }}>
+        {m ? <div style={cap}>Label</div> : <Eyebrow as="span" style={{ marginRight: 4 }}>Label</Eyebrow>}
+        <div role="group" aria-label="Label" style={m ? chipRow : { display: 'contents' }}>
+          {d.labels.map(l => <Chip key={l.id} size={size} selected={labelId === l.id} dot={labelColor(l.color_index)} onClick={() => setLabelId(labelId === l.id ? '' : l.id)}>{l.name}</Chip>)}
+          {m && <Chip size="touch" add onClick={() => setLabelsOpen(true)} aria-label="Add or manage labels">+ Add</Chip>}
+        </div>
+      </div>
+      {msg && <ErrorText>{msg}</ErrorText>}
+      <Button block onClick={save}>Save highlight</Button>
+      {!m && <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>Page numbers are kept as you go. Press Enter to save, or Shift+Enter for a new line.</div>}
+    </Panel>
+  )
+
+  const overlays = (
+    <>
+      {form && <HighlightForm d={d} platform={platform} h={form.h} draft={form.draft} onClose={() => setForm(null)}
+        onSaved={msgText => { msgText && toast(msgText); onQueued && onQueued() }} />}
+      {labelsOpen && <LabelsOverlay d={d} platform={platform} onClose={() => setLabelsOpen(false)} />}
+    </>
+  )
+
+  if (m) return (
+    <div style={{ padding: '14px 12px 24px', display: 'flex', flexDirection: 'column', gap: 14 }}>
+      {capture}
+      {d.highlights.length === 0 && <EmptyState style={{ margin: '8px 4px' }}>No highlights yet. Note the page number, add a few words, and save. You can dictate it too.</EmptyState>}
+      {d.highlights.map(h => (
+        <HighlightCard key={h.id} page={h.page} label={labelText(h)} labelColor={labelOf(h).color} quote={h.quote || null} note={h.note || null}
+          names={names(h) || null} onOpen={() => setForm({ h })} onRemove={() => d.removeHighlight(h)} />
+      ))}
+      {overlays}
+    </div>
+  )
+
+  // Desktop: sorted by page, filtered by label.
+  const count = id => d.highlights.filter(h => (id === 'none' ? !label(h.label_id) : h.label_id === id)).length
+  const filters = [{ id: 'all', name: 'All ' + d.highlights.length }]
+    .concat(d.labels.map(l => ({ id: l.id, name: l.name + ' ' + count(l.id) })))
+    .concat(count('none') ? [{ id: 'none', name: 'Unlabelled ' + count('none') }] : [])
+  const shown = d.highlights
+    .filter(h => filter === 'all' || (filter === 'none' ? !label(h.label_id) : h.label_id === filter))
+    .slice().sort((a, b) => a.page - b.page || (a.created_at > b.created_at ? 1 : -1))
   return (
     <>
-      <section className="card qc" aria-label="Quick capture" style={{ marginBottom: 22 }}>
-        <div className="row wrap" style={{ alignItems: 'flex-end', gap: 14 }}>
-          <Field label="Page"><input className="inp pageno" inputMode="numeric" value={page} onChange={e => { setPage(e.target.value.replace(/\D/g, '')); setMsg('') }} placeholder="42" /></Field>
-          <div className="grow fld" style={{ minWidth: 220 }}>
-            <label htmlFor="thought">Your thought</label>
-            <div className="boxed">
-              <textarea id="thought" className="inp" rows={2} value={note} onKeyDown={onKey} onChange={e => { setNote(e.target.value); setMsg('') }} placeholder="What stopped you here?" />
-              <Mic onText={t => setNote(n => joinText(n, t))} onError={setMsg} />
-            </div>
-          </div>
+      {header(
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          <Button variant="subtle" onClick={() => setLabelsOpen(true)}>Manage labels</Button>
+          <Button icon="plus" onClick={() => setForm({ draft: { page, note, quote, labelId, mentions } })}>Capture with details</Button>
         </div>
-        {showQ && (
-          <div className="fld" style={{ marginTop: 10 }}>
-            <label htmlFor="quote">Quote from the page</label>
-            <div className="boxed">
-              <textarea id="quote" className="inp serif" style={{ fontStyle: 'italic' }} rows={2} value={quote} onChange={e => { setQuote(e.target.value); setMsg('') }} />
-              <Mic label="Dictate the quote" onText={t => setQuote(n => joinText(n, t))} onError={setMsg} />
-            </div>
-          </div>
-        )}
-        <div className="row wrap" style={{ marginTop: 10 }}>
-          <button type="button" className="chip dash" onClick={() => { setShowQ(!showQ); showQ && setQuote('') }}>{showQ ? 'Remove quote' : '+ Add quote'}</button>
-          {d.characters.length > 0 && <button type="button" className="chip dash" onClick={() => setShowM(!showM)}>{showM ? 'Hide characters' : mentions.length ? `Characters (${mentions.length})` : '+ Who is in it?'}</button>}
-        </div>
-        {showM && <div className="row wrap" style={{ marginTop: 10 }}>{d.characters.map(c => {
-          const on = mentions.includes(c.id)
-          return <button type="button" key={c.id} className={'chip' + (on ? ' on' : '')} aria-pressed={on} onClick={() => setMentions(m => on ? m.filter(x => x !== c.id) : [...m, c.id])}>{firstName(c)}</button>
-        })}</div>}
-        <div className="row wrap" style={{ marginTop: 12 }} role="group" aria-label="Label">
-          {d.labels.map(l => <button type="button" key={l.id} className={'chip' + (labelId === l.id ? ' on' : '')} aria-pressed={labelId === l.id} onClick={() => setLabelId(labelId === l.id ? '' : l.id)}>
-            <span className="dot" style={{ background: labelColor(l.color_index) }} />{l.name}</button>)}
-          <button type="button" className="chip dash" onClick={() => setLabelsOpen(true)}>+ Add</button>
-        </div>
-        <Err>{msg}</Err>
-        <button className="btn primary wide" style={{ marginTop: 14 }} onClick={save}>Save highlight</button>
-      </section>
-
-      <div className="row wrap" style={{ marginBottom: 14 }}>
-        <h2 className="grow" style={{ fontSize: 18 }}>{d.highlights.length} highlight{d.highlights.length === 1 ? '' : 's'}</h2>
-        <button className="btn sm" onClick={() => setLabelsOpen(true)}>Manage labels</button>
+      )}
+      {capture}
+      <div style={{ ...chipRow, gap: 8, alignItems: 'center', margin: '24px 0 4px' }} role="group" aria-label="Filter by label">
+        <Eyebrow as="span" style={{ marginRight: 4 }}>Your highlights</Eyebrow>
+        {filters.map(f => <Chip key={f.id} selected={filter === f.id} onClick={() => setFilter(f.id)}>{f.name}</Chip>)}
       </div>
-      <div className="row wrap" style={{ marginBottom: 14 }} role="group" aria-label="Filter by label">
-        <button className={'chip' + (filter === 'all' ? ' on' : '')} onClick={() => setFilter('all')}>All</button>
-        {d.labels.map(l => <button key={l.id} className={'chip' + (filter === l.id ? ' on' : '')} onClick={() => setFilter(l.id)}><span className="dot" style={{ background: labelColor(l.color_index) }} />{l.name}</button>)}
-        <button className={'chip' + (filter === 'none' ? ' on' : '')} onClick={() => setFilter('none')}>Unlabelled</button>
-      </div>
-      {shown.length === 0 && <p className="mute">{d.highlights.length ? 'Nothing under that label.' : 'Your first highlight will show up here.'}</p>}
-      {shown.map(h => {
-        const l = label(h.label_id)
-        return (
-          <article key={h.id} className="hl" tabIndex={0} style={{ borderLeftColor: l ? labelColor(l.color_index) : 'var(--line2)' }}
-            onClick={() => setEdit(h)} onKeyDown={e => e.key === 'Enter' && setEdit(h)}>
-            <div className="meta"><b style={{ color: 'var(--text)' }}>p. {h.page}</b><span>{l ? l.name : 'Unlabelled'}</span>{h.pending && <span className="sync off">waiting to sync</span>}
-              <span className="grow" />
-              <button className="icon" aria-label="Remove highlight" onClick={e => { e.stopPropagation(); d.removeHighlight(h) }}>🗑</button></div>
-            {h.quote && <q>“{h.quote}”</q>}
-            {h.note && <div>{h.note}</div>}
-            {h.mentions?.length > 0 && <div className="mute" style={{ fontSize: 13, marginTop: 4 }}>{h.mentions.map(charName).filter(Boolean).join(', ')}</div>}
-          </article>
-        )
-      })}
-
-      {edit && <EditHighlight d={d} h={edit} onClose={() => setEdit(null)} />}
-      {labelsOpen && <LabelsDialog d={d} onClose={() => setLabelsOpen(false)} />}
+      {shown.length === 0 && <EmptyState style={{ margin: '24px 0' }}>{d.highlights.length ? 'No highlights with that label yet.' : 'Nothing here yet. Use quick capture above while you read.'}</EmptyState>}
+      {shown.map(h => (
+        <HighlightRow key={h.id} page={h.page} label={labelText(h)} labelColor={labelOf(h).color} quote={h.quote || null}
+          note={h.note || null} mentions={names(h) || null} onOpen={() => setForm({ h })} />
+      ))}
+      {overlays}
     </>
   )
 }
 
-function EditHighlight({ d, h, onClose }) {
-  const [page, setPage] = useState(String(h.page)), [note, setNote] = useState(h.note || ''), [quote, setQuote] = useState(h.quote || '')
-  const [labelId, setLabelId] = useState(h.label_id || ''), [mentions, setMentions] = useState(h.mentions || []), [err, setErr] = useState('')
-  async function save() {
-    if (!/^\d+$/.test(page) || Number(page) < 1) return setErr('Add the page number.')
-    if (!note.trim() && !quote.trim()) return setErr('Add a thought or a quote.')
-    const e = await d.updateHighlight(h.id, { page: Number(page), note: note.trim() || null, quote: quote.trim() || null, label_id: labelId || null }, mentions)
-    e ? setErr(e) : onClose()
+/* New (desktop "Capture with details") or edit highlight. Desktop: right drawer; phone: tall sheet. */
+function HighlightForm({ d, platform, h, draft, onClose, onSaved }) {
+  const m = platform === 'mobile'
+  const blank = { page: '', note: '', quote: '', labelId: d.labels[0]?.id || '', mentions: [] }
+  const init = h ? { page: String(h.page), note: h.note || '', quote: h.quote || '', labelId: h.label_id || '', mentions: h.mentions || [] } : { ...blank, ...draft }
+  const [f, setF] = useState(init), [err, setErr] = useState('')
+  const put = p => { setF(x => ({ ...x, ...p })); setErr('') }
+  const qDict = useDictation(t => setF(x => ({ ...x, quote: joinText(x.quote, t) })), setErr)
+  const nDict = useDictation(t => setF(x => ({ ...x, note: joinText(x.note, t) })), setErr)
+
+  async function save(another) {
+    if (!f.page || Number(f.page) < 1) return setErr('Add the page number first.')
+    if (!f.note.trim() && !f.quote.trim()) return setErr('Add a thought or a quote.')
+    if (h) {
+      const e = await d.updateHighlight(h.id, { page: Number(f.page), note: f.note.trim() || null, quote: f.quote.trim() || null, label_id: f.labelId || null }, f.mentions)
+      if (e) return setErr(e)
+      onSaved('Highlight updated'); onClose()
+    } else {
+      const r = await d.addHighlight({ page: f.page, note: f.note.trim(), quote: f.quote.trim(), labelId: f.labelId, mentions: f.mentions })
+      if (!r.ok) return setErr(r.message)
+      onSaved(r.queued ? 'Saved on this device. Will sync when online.' : 'Highlight saved')
+      if (another) setF({ ...blank, page: f.page, labelId: f.labelId }); else onClose()
+    }
   }
-  return (
-    <Dialog title="Edit highlight" onClose={onClose} wide footer={<>
-      <button className="btn danger" style={{ marginRight: 'auto' }} onClick={() => { d.removeHighlight(h); onClose() }}>Remove</button>
-      <button className="btn" onClick={onClose}>Cancel</button><button className="btn primary" onClick={save}>Save</button></>}>
-      <div className="stack">
-        <Field label="Page"><input className="inp" inputMode="numeric" value={page} onChange={e => setPage(e.target.value.replace(/\D/g, ''))} /></Field>
-        <Field label="Label"><select className="inp" value={labelId} onChange={e => setLabelId(e.target.value)}><option value="">Unlabelled</option>{d.labels.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}</select></Field>
-        <div className="fld"><label htmlFor="en">Thought</label><div className="boxed"><textarea id="en" className="inp" rows={3} value={note} onChange={e => setNote(e.target.value)} /><Mic onText={t => setNote(n => joinText(n, t))} onError={setErr} /></div></div>
-        <div className="fld"><label htmlFor="eq">Quote</label><div className="boxed"><textarea id="eq" className="inp serif" style={{ fontStyle: 'italic' }} rows={2} value={quote} onChange={e => setQuote(e.target.value)} /><Mic label="Dictate the quote" onText={t => setQuote(n => joinText(n, t))} onError={setErr} /></div></div>
-        {d.characters.length > 0 && <div className="fld">Who is in it
-          <div className="row wrap">{d.characters.map(c => { const on = mentions.includes(c.id); return <button type="button" key={c.id} className={'chip' + (on ? ' on' : '')} aria-pressed={on} onClick={() => setMentions(m => on ? m.filter(x => x !== c.id) : [...m, c.id])}>{firstName(c)}</button> })}</div></div>}
-        <Err>{err}</Err>
+  const remove = () => { d.removeHighlight(h); onClose() }
+  const labels = d.labels.map(l => <Chip key={l.id} size={m ? 'touch' : 'md'} selected={f.labelId === l.id} dot={labelColor(l.color_index)} onClick={() => put({ labelId: f.labelId === l.id ? '' : l.id })}>{l.name}</Chip>)
+  const people = d.characters.map(c => <Chip key={c.id} size={m ? 'touch' : 'md'} selected={f.mentions.includes(c.id)} onClick={() => put({ mentions: toggle(f.mentions, c.id) })}>{firstName(c)}</Chip>)
+
+  if (m) return (
+    <FormOverlay kind="sheet" tall title="Edit highlight" onClose={onClose} focus={false}>
+      <div style={{ display: 'flex', gap: 10 }}>
+        <Field platform="mobile" label="Page" style={{ width: 92, flex: 'none' }}>
+          <TextInput ground="page" size="lg" inputMode="numeric" value={f.page} onChange={e => put({ page: digits(e.target.value) })} />
+        </Field>
+        <div style={{ flex: 1, minWidth: 0 }}><div style={cap}>Label</div><div style={chipRow}>{labels}</div></div>
       </div>
-    </Dialog>
+      <Field platform="mobile" label="Your thought"><TextArea size="lg" style={{ minHeight: 72 }} value={f.note} onChange={e => put({ note: e.target.value })} /></Field>
+      <Field platform="mobile" label="Quote from the page"><TextArea size="lg" className="app-quote" style={{ minHeight: 72 }} value={f.quote} onChange={e => put({ quote: e.target.value })} /></Field>
+      {d.characters.length > 0 && <div><div style={cap}>Who is in it?</div><div style={chipRow}>{people}</div></div>}
+      {err && <ErrorText>{err}</ErrorText>}
+      <div style={{ display: 'flex', gap: 8 }}>
+        <Button style={{ flex: 1 }} onClick={() => save(false)}>Save</Button>
+        <Button variant="subtle" platform="mobile" onClick={onClose}>Cancel</Button>
+        <Button variant="subtle" platform="mobile" tone="danger" onClick={remove}>Remove</Button>
+      </div>
+    </FormOverlay>
+  )
+  const micRow = (text, dict) => (
+    <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+      {text}<MicPill recording={dict.listening} onClick={dict.toggle} style={{ minHeight: 40 }}>{dict.listening ? 'Listening. Tap to stop' : 'Dictate'}</MicPill>
+    </span>
+  )
+  return (
+    <FormOverlay title={h ? 'Edit highlight' : 'New highlight'} onClose={onClose}>
+      <Field label="Page">
+        <TextInput pageNumber style={{ width: 110 }} inputMode="numeric" placeholder="142" value={f.page} onChange={e => put({ page: digits(e.target.value) })} />
+      </Field>
+      <div className="de-field">
+        {micRow('Quote from the book (optional)', qDict)}
+        <TextInput as="textarea" rows={3} aria-label="Quote from the book" value={f.quote} placeholder="Type it or dictate it" onChange={e => put({ quote: e.target.value })}
+          className="app-quote" style={{ padding: '10px 14px', lineHeight: 1.5, resize: 'vertical', fontSize: 16 }} />
+      </div>
+      <div className="de-field">
+        {micRow('Your thought (optional)', nDict)}
+        <TextInput as="textarea" rows={3} aria-label="Your thought" value={f.note} placeholder="Why does this matter?" onChange={e => put({ note: e.target.value })}
+          style={{ padding: '10px 14px', lineHeight: 1.5, resize: 'vertical' }} />
+      </div>
+      {err && <ErrorText>{err}</ErrorText>}
+      <div><Eyebrow style={{ marginBottom: 8 }}>Label</Eyebrow><div role="group" aria-label="Label" style={{ ...chipRow, gap: 8 }}>{labels}</div></div>
+      {d.characters.length > 0 && <div><Eyebrow style={{ marginBottom: 8 }}>Who is in it? (optional)</Eyebrow><div role="group" aria-label="Characters mentioned" style={{ ...chipRow, gap: 8 }}>{people}</div></div>}
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+        <Button onClick={() => save(false)}>Save</Button>
+        {!h && <Button variant="subtle" onClick={() => save(true)}>Save and add another</Button>}
+      </div>
+      {h && <Button variant="subtle" tone="danger" onClick={remove}>Remove highlight</Button>}
+    </FormOverlay>
   )
 }
 
-function LabelsDialog({ d, onClose }) {
+/* Rename-as-you-type with one write per pause; an empty or duplicate name is never saved. */
+export function useDraftNames(items, save, dupMsg) {
+  const [drafts, setDrafts] = useState({}), [err, setErr] = useState('')
+  const timers = useRef({})
+  useEffect(() => () => Object.values(timers.current).forEach(clearTimeout), [])
+  const rename = (item, name) => {
+    setDrafts(x => ({ ...x, [item.id]: name })); setErr('')
+    clearTimeout(timers.current[item.id])
+    timers.current[item.id] = setTimeout(async () => {
+      const v = name.trim()
+      if (!v || v === item.name) return
+      if (items.some(o => o.id !== item.id && o.name.toLowerCase() === v.toLowerCase())) return setErr(dupMsg)
+      const e = await save(item.id, { name: v })
+      if (e) setErr(e); else setDrafts(x => { const n = { ...x }; delete n[item.id]; return n })
+    }, 600)
+  }
+  return { nameOf: item => drafts[item.id] ?? item.name, rename, err, setErr }
+}
+
+function LabelsOverlay({ d, platform, onClose }) {
+  const m = platform === 'mobile'
   const [name, setName] = useState(''), [err, setErr] = useState('')
+  const names = useDraftNames(d.labels, d.updateLabel, 'You already have a label with that name.')
   async function add(e) {
-    e.preventDefault()
+    e && e.preventDefault()
     const n = name.trim()
-    if (!n) return setErr('Name the label.')
+    if (!n) return setErr('Give the label a name.')
     if (d.labels.some(l => l.name.toLowerCase() === n.toLowerCase())) return setErr('You already have a label with that name.')
     const e2 = await d.addLabel(n); e2 ? setErr(e2) : (setName(''), setErr(''))
   }
+  const count = l => d.highlights.filter(h => h.label_id === l.id).length
+  const rows = d.labels.map(l => (
+    <SwatchRow key={l.id} platform={platform} color={labelColor(l.color_index)} name={names.nameOf(l)} count={m ? undefined : count(l)}
+      onCycle={() => d.updateLabel(l.id, { color_index: (l.color_index + 1) % LABEL_COLORS.length })}
+      onRename={e => names.rename(l, e.target.value)} onRemove={() => d.removeLabel(l)}
+      inputLabel="Label name" removeLabel={'Delete label ' + l.name} />
+  ))
+  const adder = (
+    <form onSubmit={add} style={{ display: 'flex', gap: 8 }}>
+      <TextInput ground={m ? 'page' : 'card'} size={m ? 'lg' : 'md'} style={{ flex: 1, minWidth: 0 }} placeholder={m ? 'New label' : 'New label, for example Foreshadowing'}
+        aria-label="New label name" value={name} maxLength={40} onChange={e => { setName(e.target.value); setErr('') }} />
+      <Button type="submit">Add</Button>
+    </form>
+  )
+  const error = (err || names.err) && <ErrorText>{err || names.err}</ErrorText>
+  if (m) return (
+    <FormOverlay kind="sheet" title="Highlight labels" onClose={onClose} focus={false}>
+      <div style={{ fontSize: 13, lineHeight: 1.5, color: 'var(--text-muted)' }}>Rename the defaults or add your own. Removing a label keeps its highlights, marked Unlabelled.</div>
+      {rows}{adder}{error}
+    </FormOverlay>
+  )
   return (
-    <Dialog title="Highlight labels" onClose={onClose} footer={<button className="btn primary" onClick={onClose}>Done</button>}>
-      {d.labels.map(l => (
-        <div className="list-item" key={l.id}>
-          <button className="dot" style={{ background: labelColor(l.color_index), width: 22, height: 22, border: 0 }} aria-label={'Change colour of ' + l.name}
-            onClick={() => d.updateLabel(l.id, { color_index: (l.color_index + 1) % LABEL_COLORS.length })} />
-          <input className="inp grow" aria-label={'Rename ' + l.name} defaultValue={l.name} maxLength={40}
-            onBlur={e => { const v = e.target.value.trim(); if (!v) e.target.value = l.name; else if (v !== l.name) d.updateLabel(l.id, { name: v }).then(x => x && (setErr(x), (e.target.value = l.name))) }} />
-          <button className="icon" aria-label={'Delete ' + l.name} onClick={() => d.removeLabel(l)}>🗑</button>
-        </div>
-      ))}
-      <form className="row" onSubmit={add} style={{ marginTop: 10 }}>
-        <input className="inp grow" placeholder="New label" value={name} onChange={e => { setName(e.target.value); setErr('') }} maxLength={40} />
-        <button className="btn">Add</button>
-      </form>
-      <Err>{err}</Err>
-    </Dialog>
+    <FormOverlay title={'Highlight labels in ' + d.book.title} onClose={onClose} focus={false}>
+      <p style={{ margin: 0, fontSize: 13, lineHeight: 1.55, color: 'var(--text-muted)' }}>
+        Labels group your highlights. Start with the four defaults, rename them, or add your own. Removing a label keeps its highlights, marked Unlabelled.
+      </p>
+      <div>{rows}</div>
+      {adder}{error}
+    </FormOverlay>
   )
 }

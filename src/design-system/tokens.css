@@ -1,0 +1,429 @@
+/* Dog-Ear — generated from tokens.json */
+:root, [data-theme="dark"] {
+  --bg: #111113; /* Page ground on every screen (shell). Also the inset ground of the Welcome segmented control, auth-card inputs, phone reading-screen inputs, the phone tab bar, the canvas toolbar and tie-label pills. */
+  --surface: #18181b; /* Raised panels: cards, book cards, request rows, drawers, sheets, dialogs, menus, popovers, the character canvas; also the fill of inputs that sit on a surface (Your books, Book desktop). */
+  --surface-hover: #1c1c20; /* Book card on hover. */
+  --surface-raised: #222227; /* Second raised level: character nodes, count pills on section tabs, subtle-button hover, the highlighted dictionary suggestion, alias chips, the selected book in the book switcher, phone graph controls. */
+  --surface-active: #26262b; /* Selected segmented tab, secondary/ghost hover, icon-button hover, menu-item hover, avatar disc, the Admin badge. */
+  --divider: var(--surface-active); /* 1px hairlines between list entries, under headers, above footers and toolbars, under the phone header and above the phone tab bar. */
+  --border: #2a2a2f; /* 1px border of cards, feature tiles, rows, drawers, sheets, dialogs, menus, the canvas, the sync pill. */
+  --border-strong: #3a3a41; /* 1px border of every control: inputs, secondary/subtle buttons, chips, the account button, the dashed add-book card, the tie popover, unselected node rings. Kept from the source: 1.7:1 on bg and 1.6:1 on surface, below the 3:1 WCAG asks of control borders; controls still read through their labels and placeholders. Raise it (e.g. toward border-emphasis) if the build must meet 3:1. */
+  --border-hover: #4a4a52; /* Book card border on hover. */
+  --border-emphasis: #6b6b75; /* Dashed add-book card border on hover; the eye icon of a hidden tie type (phone). */
+  --canvas-dot: #2f2f36; /* Dot grid on the character canvas (radial-gradient dot every 22px). */
+  --scrim: rgba(0,0,0,0.5); /* Full-bleed scrim behind drawers, sheets and dialogs. */
+  --text: #ececee; /* Primary text and icons on bg, surface, surface-raised and surface-active (16.0:1 on bg). */
+  --text-muted: #a1a1aa; /* Secondary text: descriptions, field labels, meta lines, counts, inactive tabs, icon buttons, footers. 7.4:1 on bg, 6.9:1 on surface. */
+  --text-secondary: #c4c4cc; /* Body copy one step down from text: word definitions, request notes, character notes, canvas zoom readout. */
+  --text-quote: #e4e4e8; /* Quoted passages set in the serif italic. */
+  --text-suggestion: #b4b4bc; /* Definition line under a dictionary suggestion. */
+  --accent: #7dd3a8; /* The one brand hue: primary buttons, focus ring, active section tab underline, active phone tab, the Invite only eyebrow, text buttons, Reading status, the tie handle, selected node ring, the Saved sync dot. */
+  --accent-hover: #9be0bc; /* Primary button hover. */
+  --on-accent: #0b1f16; /* Text and icons on an accent fill (primary button, tie handle, FAB, link banner). 9.6:1. */
+  --accent-soft: #16342a; /* Success disc behind the check and mail icons, the Approved badge, the active mic button. */
+  --accent-line: #2f5a47; /* Dashed border of the phone '+ Add' label chip. */
+  --hint-bg: #14221c; /* Ground of the dismissible tip bar. */
+  --hint-border: #2a3a33; /* Border of the dismissible tip bar. */
+  --hint-text: #cfebdd; /* Text in the tip bar (13.0:1 on hint-bg). */
+  --inverse: var(--text); /* Fill of selected chips and of the toast. */
+  --on-inverse: var(--bg); /* Text on inverse fills (selected chip, toast message). */
+  --inverse-action: #0b5b3a; /* Undo action text inside the toast (6.9:1 on inverse). */
+  --inverse-muted: #555555; /* The × dismiss glyph inside the toast (6.3:1 on inverse). */
+  --danger: #ff8f86; /* Errors (role=alert text), invalid input border, destructive buttons, the Declined badge, delete-icon hover, the recording mic. */
+  --danger-hover: #ffa8a1; /* Danger button hover. */
+  --on-danger: #2a0d0a; /* Text on a danger fill (Delete book button). */
+  --on-danger-rec: #2a0e0b; /* Text on the recording mic pill (desktop highlight drawer). Kept from the source; one hex step off on-danger. */
+  --danger-soft: #2a1d1f; /* Ground behind the delete icon button on hover. */
+  --danger-line: #5a2f2b; /* Border of the outline danger button on desktop (Remove, Remove tie, Remove character). */
+  --danger-line-mobile: #5a3330; /* Border of the outline danger button on phone. Kept from the source; differs slightly from danger-line. */
+  --danger-badge: #3a1f1d; /* Ground of the Declined badge. */
+  --warning: #ffd166; /* Offline sync state, the Pending badge, Paused status, hidden-tie indicator dot. */
+  --warning-badge: #3a3015; /* Ground of the Pending badge. */
+  --warning-line: #6b5a2a; /* Border of the sync pill when offline (desktop). */
+  --status-reading: var(--accent); /* Status dot for Reading books. */
+  --status-finished: var(--palette-blue); /* Status dot for Finished books. */
+  --status-paused: var(--warning); /* Status dot for Paused books. */
+  --palette-blue: #8fb0ff; /* Categorical colour 1 of 8. Tie-type colour order: blue, green, coral, violet, yellow, pink, cyan, sand. Book-cover order: blue, yellow, green, pink, violet, cyan, coral, sand. Book initials on it use on-inverse. Also the Lexicon feature icon and character mentions under a highlight. */
+  --palette-green: #5fd49a; /* Categorical colour 2 of 8. Tie-type colour order: blue, green, coral, violet, yellow, pink, cyan, sand. Book-cover order: blue, yellow, green, pink, violet, cyan, coral, sand. Book initials on it use on-inverse. Also the Character graph feature icon. */
+  --palette-coral: #ff8f86; /* Categorical colour 3 of 8. Tie-type colour order: blue, green, coral, violet, yellow, pink, cyan, sand. Book-cover order: blue, yellow, green, pink, violet, cyan, coral, sand. Book initials on it use on-inverse. */
+  --palette-violet: #b79cf0; /* Categorical colour 4 of 8. Tie-type colour order: blue, green, coral, violet, yellow, pink, cyan, sand. Book-cover order: blue, yellow, green, pink, violet, cyan, coral, sand. Book initials on it use on-inverse. */
+  --palette-yellow: #ffd166; /* Categorical colour 5 of 8. Tie-type colour order: blue, green, coral, violet, yellow, pink, cyan, sand. Book-cover order: blue, yellow, green, pink, violet, cyan, coral, sand. Book initials on it use on-inverse. Also the Highlights feature icon. */
+  --palette-pink: #ff9ecb; /* Categorical colour 6 of 8. Tie-type colour order: blue, green, coral, violet, yellow, pink, cyan, sand. Book-cover order: blue, yellow, green, pink, violet, cyan, coral, sand. Book initials on it use on-inverse. */
+  --palette-cyan: #5fd0e6; /* Categorical colour 7 of 8. Tie-type colour order: blue, green, coral, violet, yellow, pink, cyan, sand. Book-cover order: blue, yellow, green, pink, violet, cyan, coral, sand. Book initials on it use on-inverse. */
+  --palette-sand: #c9b79c; /* Categorical colour 8 of 8. Tie-type colour order: blue, green, coral, violet, yellow, pink, cyan, sand. Book-cover order: blue, yellow, green, pink, violet, cyan, coral, sand. Book initials on it use on-inverse. */
+  --tie-untyped: var(--text-muted); /* Colour of an untyped tie (dash 3 4). */
+  --label-yellow: #ffe27a; /* Highlight-label swatch: Clue (default). Shown as a dot next to the label name; tapping the swatch cycles yellow, blue, pink, green, violet, orange, teal, gray. */
+  --label-blue: #9cc2ff; /* Highlight-label swatch: Quote (default). Shown as a dot next to the label name; tapping the swatch cycles yellow, blue, pink, green, violet, orange, teal, gray. */
+  --label-pink: #ffb3c1; /* Highlight-label swatch: Question (default). Shown as a dot next to the label name; tapping the swatch cycles yellow, blue, pink, green, violet, orange, teal, gray. */
+  --label-green: #a5e3b8; /* Highlight-label swatch: Theme (default). Shown as a dot next to the label name; tapping the swatch cycles yellow, blue, pink, green, violet, orange, teal, gray. */
+  --label-violet: #d9b8ff; /* Highlight-label swatch: 5th label. Shown as a dot next to the label name; tapping the swatch cycles yellow, blue, pink, green, violet, orange, teal, gray. */
+  --label-orange: #ffc999; /* Highlight-label swatch: 6th label. Shown as a dot next to the label name; tapping the swatch cycles yellow, blue, pink, green, violet, orange, teal, gray. */
+  --label-teal: #9be7e0; /* Highlight-label swatch: 7th label. Shown as a dot next to the label name; tapping the swatch cycles yellow, blue, pink, green, violet, orange, teal, gray. */
+  --label-gray: #d6d6dc; /* Highlight-label swatch: 8th label. Shown as a dot next to the label name; tapping the swatch cycles yellow, blue, pink, green, violet, orange, teal, gray. */
+  --avatar-green: #1d6b47; /* Initial disc on a desktop character node, assigned in order green, blue, red, violet, brown, teal by the character's position. Initial in on-avatar. */
+  --avatar-blue: #2b56b8; /* Initial disc on a desktop character node, assigned in order green, blue, red, violet, brown, teal by the character's position. Initial in on-avatar. */
+  --avatar-red: #a8322a; /* Initial disc on a desktop character node, assigned in order green, blue, red, violet, brown, teal by the character's position. Initial in on-avatar. */
+  --avatar-violet: #6a3bbf; /* Initial disc on a desktop character node, assigned in order green, blue, red, violet, brown, teal by the character's position. Initial in on-avatar. */
+  --avatar-brown: #8a5a1c; /* Initial disc on a desktop character node, assigned in order green, blue, red, violet, brown, teal by the character's position. Initial in on-avatar. */
+  --avatar-teal: #1c6b78; /* Initial disc on a desktop character node, assigned in order green, blue, red, violet, brown, teal by the character's position. Initial in on-avatar. */
+  --on-avatar: #ffffff; /* Initial on an avatar disc; also the ring of the node a dragged tie will land on. */
+  --shadow-card: 0 24px 60px rgba(0,0,0,0.35); /* Welcome auth card. */
+  --shadow-dialog: 0 24px 60px rgba(0,0,0,0.5); /* Alert dialog. */
+  --shadow-popover: 0 24px 60px rgba(0,0,0,0.6); /* Tie popover on the canvas. */
+  --shadow-drawer: -24px 0 60px rgba(0,0,0,0.4); /* Desktop right-hand drawer. */
+  --shadow-sheet: 0 -24px 60px rgba(0,0,0,0.5); /* Phone bottom sheet that replaces the drawer (Your books). */
+  --shadow-sheet-tabbar: 0 -16px 40px rgba(0,0,0,0.45); /* Phone sheet docked above the tab bar (Book). */
+  --shadow-menu: 0 16px 40px rgba(0,0,0,0.5); /* Account menu. */
+  --shadow-toast: 0 12px 32px rgba(0,0,0,0.5); /* Toast. */
+  --shadow-toolbar: 0 10px 24px rgba(0,0,0,0.5); /* Canvas zoom toolbar. */
+  --shadow-fab: 0 8px 20px rgba(0,0,0,0.45); /* Phone add-character FAB. */
+  --shadow-node: 0 6px 16px rgba(0,0,0,0.4); /* Desktop character node. */
+  --shadow-handle: 0 4px 10px rgba(0,0,0,0.4); /* Green tie handle on a node. */
+  --shadow-spine: inset 4px 0 0 rgba(0,0,0,0.18); /* Spine shading on a book cover. */
+}
+:root {
+  --space-2: 2px; /* Gap inside node/name stacks; count-pill vertical padding. */
+  --space-3: 3px; /* Gap between a suggestion's word and definition; phone tab icon to label. */
+  --space-4: 4px; /* Segmented-control padding and gap; header gap on phone; gap between title and meta in rows. */
+  --space-6: 6px; /* Field label to control; chip groups; menu padding; toast left action padding. */
+  --space-8: 8px; /* Default small gap: icon to label, chips in a row, button pairs. */
+  --space-10: 10px; /* Gap between dialog/action buttons; between title and badge. */
+  --space-12: 12px; /* Gap between feature tiles and filter rows; phone body side padding; hint bar bottom margin. */
+  --space-14: 14px; /* Gap inside form stacks (auth card, drawer body); input side padding; chip side padding. */
+  --space-16: 16px; /* Feature-tile padding; book-card grid gap; gap between title row and actions; phone sheet padding. */
+  --space-18: 18px; /* Button side padding; card padding inside the book screen; request row vertical padding. */
+  --space-20: 20px; /* Book-card padding; entry vertical padding; phone welcome side padding; drawer header top. */
+  --space-22: 22px; /* Margin between section tabs; canvas dot pitch. */
+  --space-24: 24px; /* Auth card, dialog and drawer side padding; gap between page sections; footer top padding. */
+  --space-28: 28px; /* Drawer body bottom padding; header-to-title gap on the book screen; phone welcome hero top. */
+  --space-32: 32px; /* Desktop container top padding (Welcome, Admin); feature row top margin; empty-state margin. */
+  --space-36: 36px; /* Desktop container top padding (Your books, Book); empty-state margin on Lexicon. */
+  --space-40: 40px; /* Desktop container side padding; title block top padding; phone page-title top padding. */
+  --space-56: 56px; /* Desktop container bottom padding (Welcome, Book); hero gap and top padding on Welcome. */
+  --space-64: 64px; /* Desktop container bottom padding (Your books, Admin). */
+  --radius-xs: 4px; /* Spine side of a book cover (4px 8px 8px 4px). */
+  --radius-sm: 8px; /* Segmented tabs, icon buttons (desktop), menu items, toast buttons, book-cover fore-edge. */
+  --radius-md: 10px; /* Buttons, inputs, search fields, the account button, phone icon buttons and graph controls. */
+  --radius-lg: 12px; /* Feature tiles, segmented-control track, menus, toasts, tip bar, canvas toolbar, phone word search. */
+  --radius-xl: 14px; /* Book cards, request rows, dialogs, panel cards, the canvas, the tie popover, phone cards. */
+  --radius-2xl: 16px; /* The Welcome auth card. */
+  --radius-sheet: 18px; /* Top corners of phone bottom sheets. */
+  --radius-pill: 999px; /* Chips, badges, count pills, the sync pill, character nodes, tie labels. */
+  --radius-round: 50%; /* Avatars, status dots, mic buttons, the FAB, success discs. */
+  --size-tap: 44px; /* Minimum height of every control and the side of icon buttons, on both platforms. */
+  --size-chip: 36px; /* Desktop filter/choice chip min-height (plus 1px border each side). */
+  --size-chip-lg: 40px; /* Admin filter chip with a count. */
+  --size-sync: 32px; /* Desktop sync pill min-height. */
+  --size-node: 52px; /* Desktop character node min-height. */
+  --size-avatar: 36px; /* Avatar on a desktop node; success disc on the auth card. */
+  --size-avatar-sm: 24px; /* Initial disc in the account button. */
+  --size-header-mobile: 56px; /* Phone app header height. */
+  --size-tabbar-mobile: 64px; /* Phone bottom tab bar height; sheets dock above it. */
+  --size-fab: 56px; /* Phone FAB. */
+  --size-node-mobile-w: 112px; /* Phone character node width (44px tall). */
+  --size-cover-w: 56px; /* Book cover width (76px tall). */
+  --size-cover-h: 76px; /* Book cover height. */
+  --size-drawer: 440px; /* Desktop drawer width. */
+  --size-dialog: 420px; /* Dialog width; also the Welcome auth card width on desktop. */
+  --size-popover: 380px; /* Tie popover width. */
+  --size-menu: 240px; /* Account menu min-width. */
+  --size-canvas-h: 600px; /* Desktop character canvas height. */
+  --size-container-wide: 1120px; /* Welcome container max-width. */
+  --size-container: 1080px; /* Your books and Book container max-width. */
+  --size-container-narrow: 960px; /* Invite requests container max-width. */
+  --size-viewport-desktop: 1280px; /* Desktop design width (shell min-height 820px; Book 900px). */
+  --size-viewport-mobile: 390px; /* Phone design width (shell height 844px). */
+  --z-edge-label: 2; /* Tie label pills above edges. */
+  --z-node: 3; /* Character nodes, phone graph controls, FAB, link banner. */
+  --z-scrim: 5; /* Scrim. */
+  --z-drawer: 6; /* Drawer and its phone sheet form. */
+  --z-dialog: 7; /* Dialog; canvas toolbar. */
+  --z-menu: 8; /* Account menu; tie popover. */
+  --z-sheet: 10; /* Phone sheet above the tab bar. */
+  --z-toast-mobile: 20; /* Toast on the phone Book screen. */
+  --z-toast: 30; /* Toast everywhere else. */
+  --font-sans: "Manrope", system-ui, sans-serif;
+  --font-serif: "Source Serif 4", Georgia, serif;
+  --text-desktop-display: 800 46px/1.1 var(--font-sans); /* Welcome headline (h1). */
+  --text-desktop-lede: 400 17px/1.6 var(--font-sans); /* Welcome intro paragraph, text-muted, max-width 520px. */
+  --text-desktop-title: 700 32px/1.4 var(--font-sans); /* Page title (h1) on Your books, Book and Invite requests. */
+  --text-desktop-drawer-title: 700 28px/1.4 var(--font-sans); /* Character name (h2) at the top of the character drawer. */
+  --text-desktop-page-numeral: 700 26px/1.4 var(--font-sans); /* Page number in the desktop highlight list. */
+  --text-desktop-capture-page: 700 24px/1.4 var(--font-sans); /* Page field in desktop quick capture. */
+  --text-desktop-word: 700 19px/1.4 var(--font-sans); /* Headword in the desktop lexicon list. */
+  --text-desktop-tab: 600 15px/1.4 var(--font-sans); /* Section tabs (Lexicon, Characters, Highlights). */
+  --text-desktop-quote: italic 400 17px/1.6 var(--font-serif); /* Quote in the desktop highlight list, serif italic, text-quote. */
+  --text-desktop-node-name: 700 14px/1.25 var(--font-sans); /* Character node first name; the job under it is 12px text-muted. */
+  --text-desktop-edge-label: 600 11px/1.4 var(--font-sans); /* Tie label pill on the desktop canvas. */
+  --text-mobile-display: 800 32px/1.12 var(--font-sans); /* Welcome headline (h1) on phone. */
+  --text-mobile-lede: 400 16px/1.6 var(--font-sans); /* Welcome intro paragraph on phone. */
+  --text-mobile-title: 700 28px/1.4 var(--font-sans); /* Page title on phone (Your books). */
+  --text-mobile-header-title: 800 17px/1.4 var(--font-sans); /* Book title in the phone app header; sheet titles (Label, Edit highlight, Tie types). */
+  --text-mobile-sheet-name: 800 19px/1.4 var(--font-sans); /* Character name in the phone character sheet. */
+  --text-mobile-capture-page: 700 22px/1.4 var(--font-sans); /* Page field in phone quick capture. */
+  --text-mobile-input: 400 16px/1.5 var(--font-sans); /* Inputs and textareas on the phone Book screen (16px stops iOS zoom). */
+  --text-mobile-quote: italic 400 16px/1.55 var(--font-serif); /* Quote in a phone highlight card, serif italic, text-quote. */
+  --text-mobile-tab: 600 12px/1.4 var(--font-sans); /* Bottom tab bar labels. */
+  --text-mobile-node: 700 13px/1.4 var(--font-sans); /* Phone character node pill. */
+  --text-wordmark: 800 18px/1.4 var(--font-sans); /* The Dog-Ear wordmark beside the folded-page mark. */
+  --text-dialog-title: 700 20px/1.4 var(--font-sans); /* Alert dialog title. */
+  --text-card-title: 700 19px/1.25 var(--font-sans); /* Book card title. */
+  --text-panel-title: 700 18px/1.4 var(--font-sans); /* Auth card result titles (Check your email); tie popover heading uses -0.01em. */
+  --text-row-title: 700 16px/1.4 var(--font-sans); /* Request row email, phone word headword, dictionary suggestion. */
+  --text-body: 400 15px/1.55 var(--font-sans); /* Definitions and highlight thoughts; empty-state copy uses 15px at 1.6. */
+  --text-button: 600 15px/1.4 var(--font-sans); /* Primary, secondary and danger buttons; inputs are 15px regular. */
+  --text-body-sm: 400 14px/1.6 var(--font-sans); /* Card descriptions, dialog body, page subtitles, menu items. */
+  --text-button-sm: 600 14px/1.4 var(--font-sans); /* Subtle buttons, segmented tabs, toasts, text buttons. */
+  --text-meta: 400 13px/1.5 var(--font-sans); /* Field labels, meta lines, footers, helper text, errors. */
+  --text-chip: 600 13px/1.4 var(--font-sans); /* Filter and choice chips (admin chips are 14px). */
+  --text-eyebrow: 700 12px/1.4 var(--font-sans); /* Uppercase section labels (Status, Tie type, Quick capture). Invite only uses accent. */
+  --text-caption: 400 12px/1.4 var(--font-sans); /* Small notes: counts in manage rows, request dates, phone field labels. */
+  --text-badge: 700 12px/1.4 var(--font-sans); /* Status badges and count pills. */
+}
+.desktop-display {
+  font-family: var(--font-sans);
+  font-size: 46px;
+  line-height: 1.1;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+}
+.desktop-lede {
+  font-family: var(--font-sans);
+  font-size: 17px;
+  line-height: 1.6;
+  font-weight: 400;
+  letter-spacing: 0;
+}
+.desktop-title {
+  font-family: var(--font-sans);
+  font-size: 32px;
+  line-height: 1.4;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+.desktop-drawer-title {
+  font-family: var(--font-sans);
+  font-size: 28px;
+  line-height: 1.4;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+.desktop-page-numeral {
+  font-family: var(--font-sans);
+  font-size: 26px;
+  line-height: 1.4;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+.desktop-capture-page {
+  font-family: var(--font-sans);
+  font-size: 24px;
+  line-height: 1.4;
+  font-weight: 700;
+  letter-spacing: 0;
+}
+.desktop-word {
+  font-family: var(--font-sans);
+  font-size: 19px;
+  line-height: 1.4;
+  font-weight: 700;
+  letter-spacing: 0;
+}
+.desktop-tab {
+  font-family: var(--font-sans);
+  font-size: 15px;
+  line-height: 1.4;
+  font-weight: 600;
+  letter-spacing: 0;
+}
+.desktop-quote {
+  font-family: var(--font-serif);
+  font-size: 17px;
+  line-height: 1.6;
+  font-weight: 400;
+  letter-spacing: 0;
+  font-style: italic;
+}
+.desktop-node-name {
+  font-family: var(--font-sans);
+  font-size: 14px;
+  line-height: 1.25;
+  font-weight: 700;
+  letter-spacing: 0;
+}
+.desktop-edge-label {
+  font-family: var(--font-sans);
+  font-size: 11px;
+  line-height: 1.4;
+  font-weight: 600;
+  letter-spacing: 0;
+}
+.mobile-display {
+  font-family: var(--font-sans);
+  font-size: 32px;
+  line-height: 1.12;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+}
+.mobile-lede {
+  font-family: var(--font-sans);
+  font-size: 16px;
+  line-height: 1.6;
+  font-weight: 400;
+  letter-spacing: 0;
+}
+.mobile-title {
+  font-family: var(--font-sans);
+  font-size: 28px;
+  line-height: 1.4;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+.mobile-header-title {
+  font-family: var(--font-sans);
+  font-size: 17px;
+  line-height: 1.4;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+}
+.mobile-sheet-name {
+  font-family: var(--font-sans);
+  font-size: 19px;
+  line-height: 1.4;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+}
+.mobile-capture-page {
+  font-family: var(--font-sans);
+  font-size: 22px;
+  line-height: 1.4;
+  font-weight: 700;
+  letter-spacing: 0;
+}
+.mobile-input {
+  font-family: var(--font-sans);
+  font-size: 16px;
+  line-height: 1.5;
+  font-weight: 400;
+  letter-spacing: 0;
+}
+.mobile-quote {
+  font-family: var(--font-serif);
+  font-size: 16px;
+  line-height: 1.55;
+  font-weight: 400;
+  letter-spacing: 0;
+  font-style: italic;
+}
+.mobile-tab {
+  font-family: var(--font-sans);
+  font-size: 12px;
+  line-height: 1.4;
+  font-weight: 600;
+  letter-spacing: 0;
+}
+.mobile-node {
+  font-family: var(--font-sans);
+  font-size: 13px;
+  line-height: 1.4;
+  font-weight: 700;
+  letter-spacing: 0;
+}
+.wordmark {
+  font-family: var(--font-sans);
+  font-size: 18px;
+  line-height: 1.4;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+.dialog-title {
+  font-family: var(--font-sans);
+  font-size: 20px;
+  line-height: 1.4;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+.card-title {
+  font-family: var(--font-sans);
+  font-size: 19px;
+  line-height: 1.25;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+.panel-title {
+  font-family: var(--font-sans);
+  font-size: 18px;
+  line-height: 1.4;
+  font-weight: 700;
+  letter-spacing: 0;
+}
+.row-title {
+  font-family: var(--font-sans);
+  font-size: 16px;
+  line-height: 1.4;
+  font-weight: 700;
+  letter-spacing: 0;
+}
+.body {
+  font-family: var(--font-sans);
+  font-size: 15px;
+  line-height: 1.55;
+  font-weight: 400;
+  letter-spacing: 0;
+}
+.button {
+  font-family: var(--font-sans);
+  font-size: 15px;
+  line-height: 1.4;
+  font-weight: 600;
+  letter-spacing: 0;
+}
+.body-sm {
+  font-family: var(--font-sans);
+  font-size: 14px;
+  line-height: 1.6;
+  font-weight: 400;
+  letter-spacing: 0;
+}
+.button-sm {
+  font-family: var(--font-sans);
+  font-size: 14px;
+  line-height: 1.4;
+  font-weight: 600;
+  letter-spacing: 0;
+}
+.meta {
+  font-family: var(--font-sans);
+  font-size: 13px;
+  line-height: 1.5;
+  font-weight: 400;
+  letter-spacing: 0;
+}
+.chip {
+  font-family: var(--font-sans);
+  font-size: 13px;
+  line-height: 1.4;
+  font-weight: 600;
+  letter-spacing: 0;
+}
+.eyebrow {
+  font-family: var(--font-sans);
+  font-size: 12px;
+  line-height: 1.4;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+}
+.caption {
+  font-family: var(--font-sans);
+  font-size: 12px;
+  line-height: 1.4;
+  font-weight: 400;
+  letter-spacing: 0;
+}
+.badge {
+  font-family: var(--font-sans);
+  font-size: 12px;
+  line-height: 1.4;
+  font-weight: 700;
+  letter-spacing: 0;
+}

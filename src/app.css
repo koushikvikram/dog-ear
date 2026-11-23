@@ -1,0 +1,55 @@
+/* App-level adaptation of the design system.
+   The bundle is drawn for fixed artboards (a 1280px desktop frame, a 390 × 844 phone frame) and has no
+   media queries. These rules fit it to a real viewport and hold the two accessibility fixes.
+   Component looks stay in src/design-system; do not restyle components here. */
+
+html, body, #root { min-height: 100%; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-sans);
+  font-size: 15px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* ---------- Shells fill the viewport ---------- */
+.de-shell { min-height: 100vh; min-height: 100dvh; }
+.de-shell--mobile { height: 100vh; height: 100dvh; min-height: 0; }
+
+/* Overlays cover the viewport while a desktop page scrolls under them. */
+.de-scrim, .de-drawer, .de-dialog { position: fixed; }
+.de-drawer { max-height: 100dvh; }
+.de-drawer--bottom { max-height: 88dvh; padding-bottom: env(safe-area-inset-bottom); }
+.de-toast--mobile, .de-toast--tabbar { position: fixed; }
+.de-toast--mobile { bottom: calc(16px + env(safe-area-inset-bottom)); }
+.de-toast--tabbar { bottom: calc(76px + env(safe-area-inset-bottom)); }
+
+/* The canvas layers its own toolbar (z 7), popover (z 8) and nodes; keep those inside it so a drawer or
+   dialog (z 6–7) is never drawn under the canvas toolbar. */
+.de-canvas { isolation: isolate; }
+
+/* Phone safe areas (notch, home indicator). */
+.de-appheader { padding-top: env(safe-area-inset-top); height: calc(var(--size-header-mobile) + env(safe-area-inset-top)); }
+.de-tabbar { padding-bottom: env(safe-area-inset-bottom); height: calc(var(--size-tabbar-mobile) + env(safe-area-inset-bottom)); }
+/* Sheets dock above the tab bar wherever they sit in the tree (the body scrolls, the shell does not). */
+.de-sheet { position: fixed; bottom: calc(var(--size-tabbar-mobile) + env(safe-area-inset-bottom)); max-height: min(520px, calc(100dvh - 140px)); }
+.de-sheet.app-sheet--tall { max-height: min(600px, calc(100dvh - 140px)); }
+.de-scroll { padding-top: max(var(--space-16), env(safe-area-inset-top)); padding-bottom: calc(var(--space-40) + env(safe-area-inset-bottom)); }
+
+/* ---------- Accessibility fixes (Prototype notes) ---------- */
+/* 1. Search inputs hide their own ring as drawn; put it on the field so keyboard users see focus. */
+.de-search:focus-within { outline: 2px solid var(--accent); outline-offset: 2px; }
+/* 2. 16px inputs everywhere on phone so iOS never zooms into a field. */
+.de-shell--mobile .de-input,
+.de-shell--mobile .de-textarea,
+.de-shell--mobile .de-search__input { font-size: 16px; }
+
+/* ---------- Small app helpers ---------- */
+.app-drawer-body { padding: var(--space-8) var(--space-24) var(--space-28); display: flex; flex-direction: column; gap: var(--space-16); }
+.app-wrap { display: flex; flex-wrap: wrap; gap: var(--space-6); }
+.app-meta { font-size: 13px; line-height: 1.5; color: var(--text-muted); }
+.app-chips-scroll { display: flex; gap: var(--space-6); overflow-x: auto; scrollbar-width: none; }
+.app-chips-scroll::-webkit-scrollbar { display: none; }
+.app-quote { font-family: var(--font-serif); font-style: italic; }
