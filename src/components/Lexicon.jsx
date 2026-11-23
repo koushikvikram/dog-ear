@@ -28,8 +28,11 @@ const spoken = t => t.toLowerCase().replace(/[^a-z' -]/g, '').trim().split(/\s+/
 const escapeLike = s => s.replace(/[\\%_]/g, c => '\\' + c)
 const first = entry => {
   const m = entry?.meanings?.[0]
-  return { pos: m?.pos || '', def: m?.defs?.[0]?.d || '' }
+  return { pos: m?.pos || '', def: m?.defs?.[0]?.d || '', ph: entry?.phonetic || '' }
 }
+// "noun · /ˈswɒləʊ/": part of speech and pronunciation, whichever the dictionary has.
+const meta = x => (x ? [x.pos, x.ph].filter(Boolean).join(' · ') : '')
+const metaLine = { display: 'block', color: 'var(--text-secondary)' }
 const NO_DEF = 'No definition found. You can still add it.'
 const offlineMsg = () => (navigator.onLine ? 'Could not reach the dictionary. Try again.' : 'You are offline. Only words looked up before are available.')
 
@@ -83,7 +86,7 @@ function useDefinitions(words) {
       const got = Object.fromEntries(rows.map(r => [r.word, first(r.entry)]))
       setDefs(x => ({ ...x, ...got }))
       for (const w of missing.filter(w => !got[w]).slice(0, 12)) {
-        try { const e = await lookup(w); if (!live) return; setDefs(x => ({ ...x, [w]: e ? first(e) : { pos: '', def: '' } })) }
+        try { const e = await lookup(w); if (!live) return; setDefs(x => ({ ...x, [w]: e ? first(e) : { pos: '', def: '', ph: '' } })) }
         catch { if (!live) return }
       }
     })()
@@ -103,14 +106,17 @@ export default function Lexicon({ d, platform, header }) {
     <div style={{ padding: '14px 12px 24px', display: 'flex', flexDirection: 'column', gap: 14 }}>
       <PhoneSearch d={d} toast={toast} />
       {d.words.length === 0 && <EmptyState style={{ margin: '8px 4px' }}>No words yet. Search above and add the ones you want to remember.</EmptyState>}
-      {d.words.map(w => <WordCard key={w.id} word={w.word} definition={meaning(w)} onRemove={() => d.removeWord(w)} />)}
+      {d.words.map(w => (
+        <WordCard key={w.id} word={w.word} onRemove={() => d.removeWord(w)}
+          definition={<>{meta(def(w)) && <span style={metaLine}>{meta(def(w))}</span>}{meaning(w)}</>} />
+      ))}
     </div>
   )
   return (
     <>
       {header(<Button icon="plus" onClick={() => setAdding(true)}>Add word</Button>)}
       {d.words.length === 0 && <EmptyState style={{ margin: '36px 0' }}>No words yet. Choose Add word to search the dictionary.</EmptyState>}
-      {d.words.map(w => <WordEntry key={w.id} word={w.word} pos={def(w)?.pos || ''} definition={meaning(w)} onRemove={() => d.removeWord(w)} />)}
+      {d.words.map(w => <WordEntry key={w.id} word={w.word} pos={meta(def(w))} definition={meaning(w)} onRemove={() => d.removeWord(w)} />)}
       {adding && <AddWordDrawer d={d} onClose={() => setAdding(false)} />}
     </>
   )
@@ -146,7 +152,7 @@ function AddWordDrawer({ d, onClose }) {
         {err && <ErrorText style={{ margin: '0 24px 8px' }}>{err}</ErrorText>}
         <div style={{ flex: 1, padding: '4px 0 16px' }} role="listbox" aria-label="Suggestions">
           {s.items.map((r, i) => (
-            <Suggestion key={r.word} word={r.word} pos={r.pos} definition={r.def} badge={have.has(r.word) ? 'Saved' : ''} hot={i === hot}
+            <Suggestion key={r.word} word={r.word} pos={meta(r)} definition={r.def} badge={have.has(r.word) ? 'Saved' : ''} hot={i === hot}
               role="option" aria-selected={i === hot} onClick={() => add(r.word)} onMouseEnter={() => setHot(i)} />
           ))}
           {!q.trim() && <Note>Start typing to see words and their meanings.</Note>}
@@ -185,7 +191,7 @@ function PhoneSearch({ d, toast }) {
           <div key={r.word} style={{ display: 'flex', alignItems: 'center', gap: 10, paddingTop: 8, borderTop: '1px solid var(--divider)' }}>
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ fontWeight: 700, fontSize: 15 }}>{r.word}</div>
-              <div style={{ fontSize: 13, lineHeight: 1.5, color: 'var(--text-muted)' }}>{r.def}</div>
+              <div style={{ fontSize: 13, lineHeight: 1.5, color: 'var(--text-muted)' }}>{meta(r) && <span style={metaLine}>{meta(r)}</span>}{r.def}</div>
             </div>
             <Button style={{ minHeight: 44, padding: '0 14px' }} disabled={added} onClick={() => add(r.word)}>{added ? 'Added' : 'Add'}</Button>
           </div>
