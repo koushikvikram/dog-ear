@@ -368,7 +368,7 @@ npm run build                    # production build into dist/
 - **Offline capture.** Highlights saved with no signal are kept in the browser (IndexedDB) and sent when the connection returns; the chip beside the book title shows how many are waiting. Client-made ids make retries safe.
 - **Your data.** Account menu → **Export my data** downloads everything you own as JSON.
 - **Voice dictation** uses the browser's Web Speech API (Chrome, Edge, Safari). It needs microphone permission and, in Chrome, an internet connection. Firefox has no support; the mic button explains that.
-- **Dictionary.** Definitions come from the free `dictionaryapi.dev` service and are cached in the shared `dictionary` table, so repeat lookups are instant and work offline. Suggestions as you type come from that cache; a word it has never seen is looked up when you type it in full, and a word the dictionary does not know can still be added.
+- **Dictionary.** Definitions come from the free `dictionaryapi.dev` service and are cached in the shared `dictionary` table, so repeat lookups are instant and work offline. Suggestions as you type come from the free [Datamuse API](https://www.datamuse.com/api/) (words by prefix, most common first, with part of speech and pronunciation), merged with that cache; offline, only cached words are suggested. A word neither service knows can still be added.
 - **Backups.** Supabase's free plan has no point-in-time backups. Use Export my data now and then, or `npx supabase db dump` from the CLI.
 - **Free-plan note.** Supabase pauses free projects after a week without activity. Open the app weekly, or upgrade.
 - **Removing someone.** **Authentication → Users → Delete**. Everything they own is deleted with them (`on delete cascade`).
@@ -408,4 +408,4 @@ grant execute on all functions in schema public to authenticated;
 
 ---
 
-Built with React, Vite and supabase-js. No analytics, no third-party scripts; the only outside call besides Supabase is the dictionary API.
+Built with React, Vite and supabase-js. No analytics, no third-party scripts; the only outside calls besides Supabase are the two word services in the Lexicon: dictionaryapi.dev for definitions and the Datamuse API for suggestions as you type (both see only the words typed there). Word suggestions are powered by the [Datamuse API](https://www.datamuse.com/api/).

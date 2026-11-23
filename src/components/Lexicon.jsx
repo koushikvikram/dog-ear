@@ -28,41 +28,78 @@ const spoken = t => t.toLowerCase().replace(/[^a-z' -]/g, '').trim().split(/\s+/
 const escapeLike = s => s.replace(/[\\%_]/g, c => '\\' + c)
 const first = entry => {
   const m = entry?.meanings?.[0]
-  return { pos: m?.pos || '', def: m?.defs?.[0]?.d || '' }
+  return { pos: m?.pos || '', def: m?.defs?.[0]?.d || '', ph: entry?.phonetic || '' }
 }
+// "noun · /ˈswɒləʊ/": part of speech and pronunciation, whichever the dictionary has.
+const meta = x => (x ? [x.pos, x.ph].filter(Boolean).join(' · ') : '')
+const metaLine = { display: 'block', color: 'var(--text-secondary)' }
 const NO_DEF = 'No definition found. You can still add it.'
 const offlineMsg = () => (navigator.onLine ? 'Could not reach the dictionary. Try again.' : 'You are offline. Only words looked up before are available.')
 
-// Suggestions for what is typed: prefix matches from the shared cache, plus an exact dictionary lookup.
+/* Datamuse (https://www.datamuse.com/api/) lists words by prefix, most common first, with definitions,
+   parts of speech and IPA. Entries it returns are kept for this visit, so a word added from a suggestion
+   still has a definition when dictionaryapi.dev does not know it. */
+const DM_POS = { n: 'noun', v: 'verb', adj: 'adjective', adv: 'adverb' }
+const dmEntries = new Map()
+async function datamuse(w, signal) {
+  const r = await fetch('https://api.datamuse.com/words?sp=' + encodeURIComponent(w.replace(/[*?#@,]/g, '')) + '*&md=dpr&ipa=1&max=20', { signal })
+  if (!r.ok) throw new Error('datamuse failed')
+  return (await r.json())
+    .filter(x => /^[a-z][a-z'-]*$/.test(x.word) && x.defs?.length)
+    .map(x => {
+      const ipa = (x.tags || []).find(t => t.startsWith('ipa_pron:'))
+      const meanings = x.defs.slice(0, 4).map(s => { const [p, d] = s.split('\t'); return { pos: DM_POS[p] || '', defs: [{ d: (d || p).trim(), e: '' }] } })
+      const entry = { word: x.word, phonetic: ipa ? '/' + ipa.slice(9) + '/' : '', meanings }
+      dmEntries.set(x.word, entry)
+      return entry
+    })
+}
+
+// A saved word's entry: the cache or dictionaryapi.dev, else what Datamuse gave for it (cached for next time).
+async function define(w) {
+  const e = await lookup(w)
+  if (e) return e
+  const dm = dmEntries.get(w)
+  if (dm) supabase.rpc('cache_definition', { p_word: w, p_entry: dm }).then(() => {}, () => {})
+  return dm || null
+}
+
+// Suggestions for what is typed: Datamuse's prefix matches merged with the shared cache, exact match first.
 function useSuggestions(q, limit) {
   const [s, setS] = useState({ items: [], busy: false, err: '' })
   useEffect(() => {
     const w = norm(q)
     if (!w) { setS({ items: [], busy: false, err: '' }); return }
     let live = true
+    const ctl = new AbortController()
     setS(x => ({ ...x, busy: true, err: '' }))
     const t = setTimeout(async () => {
-      let cached = []
-      try {
-        const { data } = await supabase.from('dictionary').select('word, entry').like('word', escapeLike(w) + '%').order('word').limit(limit)
-        cached = data || []
-      } catch { /* offline: fall through to the exact lookup, which reports it */ }
+      const [cachedRes, dmRes] = await Promise.allSettled([
+        supabase.from('dictionary').select('word, entry').like('word', escapeLike(w) + '%').order('word').limit(limit),
+        w.length >= 2 ? datamuse(w, ctl.signal) : Promise.resolve([]),
+      ])
       if (!live) return
-      const toItem = c => ({ word: c.word, ...first(c.entry) })
-      const exact = cached.find(c => c.word === w)
-      let items = (exact ? [exact, ...cached.filter(c => c !== exact)] : cached).map(toItem)
-      if (exact) { setS({ items, busy: false, err: '' }); return }
-      setS({ items, busy: true, err: '' })
+      const cached = new Map((cachedRes.status === 'fulfilled' ? cachedRes.value.data || [] : []).map(c => [c.word, c.entry]))
+      const dm = dmRes.status === 'fulfilled' ? dmRes.value : null
+      // Datamuse decides the order; a word already in the cache keeps the cache's definition.
+      const toItem = (word, e, extra) => { const f = first(e); return { word, ...f, ph: f.ph || extra?.phonetic || '' } }
+      let items = (dm || []).map(e => (cached.has(e.word) ? toItem(e.word, cached.get(e.word), e) : toItem(e.word, e)))
+      for (const [word, e] of cached) if (!items.some(i => i.word === word)) items.push(toItem(word, e))
+      const ex = items.findIndex(i => i.word === w)
+      if (ex > 0) items = [items[ex], ...items.slice(0, ex), ...items.slice(ex + 1)]
+      if (ex >= 0 || (dm && items.length)) { setS({ items: items.slice(0, limit), busy: false, err: '' }); return }
+      // Datamuse unreachable or nothing found: try the exact word, as before.
+      setS({ items: items.slice(0, limit), busy: true, err: '' })
       try {
         const entry = await lookup(w)
         if (!live) return
-        items = entry ? [toItem({ word: w, entry }), ...items] : [...items, { word: w, pos: '', def: NO_DEF }]
+        items = entry ? [toItem(w, entry), ...items] : [...items, { word: w, pos: '', def: NO_DEF }]
         setS({ items: items.slice(0, limit), busy: false, err: '' })
       } catch {
         if (live) setS({ items: [...items, { word: w, pos: '', def: NO_DEF }].slice(0, limit), busy: false, err: offlineMsg() })
       }
     }, 250)
-    return () => { live = false; clearTimeout(t) }
+    return () => { live = false; clearTimeout(t); ctl.abort() }
   }, [q, limit])
   return s
 }
@@ -83,7 +120,7 @@ function useDefinitions(words) {
       const got = Object.fromEntries(rows.map(r => [r.word, first(r.entry)]))
       setDefs(x => ({ ...x, ...got }))
       for (const w of missing.filter(w => !got[w]).slice(0, 12)) {
-        try { const e = await lookup(w); if (!live) return; setDefs(x => ({ ...x, [w]: e ? first(e) : { pos: '', def: '' } })) }
+        try { const e = await define(w); if (!live) return; setDefs(x => ({ ...x, [w]: e ? first(e) : { pos: '', def: '', ph: '' } })) }
         catch { if (!live) return }
       }
     })()
@@ -103,14 +140,17 @@ export default function Lexicon({ d, platform, header }) {
     <div style={{ padding: '14px 12px 24px', display: 'flex', flexDirection: 'column', gap: 14 }}>
       <PhoneSearch d={d} toast={toast} />
       {d.words.length === 0 && <EmptyState style={{ margin: '8px 4px' }}>No words yet. Search above and add the ones you want to remember.</EmptyState>}
-      {d.words.map(w => <WordCard key={w.id} word={w.word} definition={meaning(w)} onRemove={() => d.removeWord(w)} />)}
+      {d.words.map(w => (
+        <WordCard key={w.id} word={w.word} onRemove={() => d.removeWord(w)}
+          definition={<>{meta(def(w)) && <span style={metaLine}>{meta(def(w))}</span>}{meaning(w)}</>} />
+      ))}
     </div>
   )
   return (
     <>
       {header(<Button icon="plus" onClick={() => setAdding(true)}>Add word</Button>)}
       {d.words.length === 0 && <EmptyState style={{ margin: '36px 0' }}>No words yet. Choose Add word to search the dictionary.</EmptyState>}
-      {d.words.map(w => <WordEntry key={w.id} word={w.word} pos={def(w)?.pos || ''} definition={meaning(w)} onRemove={() => d.removeWord(w)} />)}
+      {d.words.map(w => <WordEntry key={w.id} word={w.word} pos={meta(def(w))} definition={meaning(w)} onRemove={() => d.removeWord(w)} />)}
       {adding && <AddWordDrawer d={d} onClose={() => setAdding(false)} />}
     </>
   )
@@ -146,7 +186,7 @@ function AddWordDrawer({ d, onClose }) {
         {err && <ErrorText style={{ margin: '0 24px 8px' }}>{err}</ErrorText>}
         <div style={{ flex: 1, padding: '4px 0 16px' }} role="listbox" aria-label="Suggestions">
           {s.items.map((r, i) => (
-            <Suggestion key={r.word} word={r.word} pos={r.pos} definition={r.def} badge={have.has(r.word) ? 'Saved' : ''} hot={i === hot}
+            <Suggestion key={r.word} word={r.word} pos={meta(r)} definition={r.def} badge={have.has(r.word) ? 'Saved' : ''} hot={i === hot}
               role="option" aria-selected={i === hot} onClick={() => add(r.word)} onMouseEnter={() => setHot(i)} />
           ))}
           {!q.trim() && <Note>Start typing to see words and their meanings.</Note>}
@@ -185,7 +225,7 @@ function PhoneSearch({ d, toast }) {
           <div key={r.word} style={{ display: 'flex', alignItems: 'center', gap: 10, paddingTop: 8, borderTop: '1px solid var(--divider)' }}>
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ fontWeight: 700, fontSize: 15 }}>{r.word}</div>
-              <div style={{ fontSize: 13, lineHeight: 1.5, color: 'var(--text-muted)' }}>{r.def}</div>
+              <div style={{ fontSize: 13, lineHeight: 1.5, color: 'var(--text-muted)' }}>{meta(r) && <span style={metaLine}>{meta(r)}</span>}{r.def}</div>
             </div>
             <Button style={{ minHeight: 44, padding: '0 14px' }} disabled={added} onClick={() => add(r.word)}>{added ? 'Added' : 'Add'}</Button>
           </div>
