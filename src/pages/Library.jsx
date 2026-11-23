@@ -1,130 +1,163 @@
 import React, { useCallback, useEffect, useState } from 'react'
 import { supabase } from '../supabase.js'
-import { Dialog, Err, Field, ago, go, useToast } from '../util.jsx'
+import {
+  AddBookCard, AppShell, BookCard, Button, Chip, Container, EmptyState, ErrorText, Eyebrow, Field, ScrollArea,
+  SearchField, Select, TextInput,
+} from '../design-system/index.js'
+import { ago, go, opened, useToast, useToastPlacement } from '../util.jsx'
+import { usePlatform } from '../ui/usePlatform.js'
+import { AccountMenu, TopRow } from '../ui/chrome.jsx'
+import { ConfirmDialog, FormOverlay } from '../ui/overlays.jsx'
+import { STATUS_COLORS, coverColor } from '../ui/palette.js'
 
 const STATUSES = ['Reading', 'Finished', 'Paused']
 
 export default function Library() {
+  const platform = usePlatform(), m = platform === 'mobile'
   const [books, setBooks] = useState(null)
   const [hidden, setHidden] = useState([])       // ids soft-deleted this session (shown hidden until purge)
-  const [filter, setFilter] = useState('All')
-  const [dlg, setDlg] = useState(null)           // {kind:'new'} | {kind:'edit',book} | {kind:'delete',book}
+  const [q, setQ] = useState(''), [status, setStatus] = useState('all'), [sort, setSort] = useState('recent')
+  const [form, setForm] = useState(null)         // {} new | { book } edit
+  const [del, setDel] = useState(null)
   const [err, setErr] = useState('')
   const toast = useToast()
+  useToastPlacement(m ? 'mobile' : 'fixed')
 
   const load = useCallback(async () => {
     const { data, error } = await supabase.rpc('library_books')
-    if (error) setErr('Could not load your books. ' + error.message); else { setErr(''); setBooks(data) }
+    if (error) setErr('Could not load your books. Check your connection and reload.'); else { setErr(''); setBooks(data) }
   }, [])
   useEffect(() => { load() }, [load])
 
-  async function open(b) {
-    supabase.from('books').update({ last_opened_at: new Date().toISOString() }).eq('id', b.id).then(() => {})
-    go('/book/' + b.id)
-  }
-
   async function remove(b) {
-    setDlg(null)
+    setDel(null)
     setHidden(h => h.concat(b.id))
     const { error } = await supabase.from('books').update({ deleted_at: new Date().toISOString() }).eq('id', b.id)
-    if (error) { setHidden(h => h.filter(x => x !== b.id)); return setErr('Could not delete the book. ' + error.message) }
-    toast('Deleted “' + b.title + '”', {
+    if (error) { setHidden(h => h.filter(x => x !== b.id)); return setErr('Could not delete ' + b.title + '. Try again in a moment.') }
+    toast(b.title + ' deleted', {
       undo: async () => {
         await supabase.from('books').update({ deleted_at: null }).eq('id', b.id)
-        setHidden(h => h.filter(x => x !== b.id)); toast('Restored “' + b.title + '”')
+        setHidden(h => h.filter(x => x !== b.id))
       },
       ms: 8000,
     })
   }
 
-  const shown = (books || []).filter(b => !hidden.includes(b.id) && (filter === 'All' || b.status === filter))
-  const empty = books && books.filter(b => !hidden.includes(b.id)).length === 0
+  const all = (books || []).filter(b => !hidden.includes(b.id))
+  const ql = q.trim().toLowerCase()
+  const shown = all
+    .filter(b => (status === 'all' || b.status === status) && (!ql || b.title.toLowerCase().includes(ql) || (b.author || '').toLowerCase().includes(ql)))
+    .sort((a, b) => sort === 'title' ? a.title.localeCompare(b.title) : new Date(b.last_opened_at) - new Date(a.last_opened_at))
+  const empty = books && all.length === 0
+  const chip = (id, label, cur, set) => <Chip key={id} size={m ? 'touch' : 'md'} selected={cur === id} onClick={() => set(id)}>{label}</Chip>
 
-  return (
-    <main className="page">
-      <div className="row wrap" style={{ marginBottom: 18 }}>
-        <h1 className="serif grow" style={{ fontSize: 30 }}>Your books</h1>
-        {!empty && <button className="btn primary" onClick={() => setDlg({ kind: 'new' })}>+ New book</button>}
+  const body = (
+    <>
+      <TopRow>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-14)', fontSize: 14, color: 'var(--text-muted)' }}>
+          {books && <span>{all.length} {all.length === 1 ? 'book' : 'books'}</span>}
+          <AccountMenu platform={platform} />
+        </div>
+      </TopRow>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', gap: 'var(--space-16)', flexWrap: 'wrap', padding: '40px 0 24px' }}>
+        <div>
+          <h1 className={m ? 'mobile-title' : 'desktop-title'} style={{ margin: 0, letterSpacing: '-0.02em' }}>Your books</h1>
+          <div style={{ marginTop: 6, fontSize: 14, color: 'var(--text-muted)' }}>Physical copies you are reading. Each book keeps its own words, characters, ties and highlights.</div>
+        </div>
+        <Button icon="plus" onClick={() => setForm({})}>New book</Button>
       </div>
       {!empty && books && (
-        <div className="row wrap" style={{ marginBottom: 16 }} role="group" aria-label="Filter by status">
-          {['All', ...STATUSES].map(s => <button key={s} className={'chip' + (filter === s ? ' on' : '')} aria-pressed={filter === s} onClick={() => setFilter(s)}>{s}</button>)}
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px 20px', alignItems: 'center', marginBottom: 'var(--space-24)' }}>
+          <SearchField size={m ? 'touch' : 'md'} placeholder="Search your books" value={q} onChange={e => setQ(e.target.value)} style={{ flex: '1 1 280px', maxWidth: m ? 'none' : 360 }} />
+          <div role="group" aria-label="Filter by status" className={m ? 'app-chips-scroll' : 'app-wrap'} style={m ? { width: '100%' } : null}>
+            {[['all', 'All'], ...STATUSES.map(s => [s, s])].map(([id, l]) => chip(id, l, status, setStatus))}
+          </div>
+          <div role="group" aria-label="Sort" className={m ? 'app-chips-scroll' : 'app-wrap'} style={m ? { width: '100%' } : { marginLeft: 'auto' }}>
+            {chip('recent', 'Recently opened', sort, setSort)}{chip('title', 'A to Z', sort, setSort)}
+          </div>
         </div>
       )}
-      <Err>{err}</Err>
-      {!books && !err && <p className="mute">Loading…</p>}
+      {err && <ErrorText style={{ marginBottom: 16 }}>{err}</ErrorText>}
+      {!books && !err && <EmptyState>Loading your books…</EmptyState>}
       {books && (
-        <div className="grid">
-          {shown.map(b => (
-            <div key={b.id} className="card bookcard" tabIndex={0} role="link" aria-label={'Open ' + b.title}
-              onClick={() => open(b)} onKeyDown={e => e.key === 'Enter' && open(b)}>
-              <h3>{b.title}</h3>
-              <div className="mute">{b.author || 'Author not added'}</div>
-              <div className="row" style={{ marginTop: 2 }}><span className="pill">{b.status}</span></div>
-              <div className="grow" />
-              <div className="mute" style={{ fontSize: 13 }}>{ago(b.last_highlight_at)}</div>
-              <div className="mute" style={{ fontSize: 12 }}>{b.hl} highlights · {b.chars} characters · {b.words} words</div>
-              <div className="acts" onClick={e => e.stopPropagation()}>
-                <button className="icon" aria-label={'Edit ' + b.title} onClick={() => setDlg({ kind: 'edit', book: b })}>✎</button>
-                <button className="icon" aria-label={'Delete ' + b.title} onClick={() => setDlg({ kind: 'delete', book: b })}>🗑</button>
-              </div>
-            </div>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-16)' }}>
+          {shown.map((b, i) => (
+            <BookCard key={b.id} title={b.title} author={b.author} color={b.color || coverColor(i)} status={b.status}
+              statusColor={STATUS_COLORS[b.status]} opened={opened(b.last_opened_at)} lastHighlight={ago(b.last_highlight_at)}
+              counts={{ chars: b.chars, ties: b.ties, hl: b.hl, words: b.words }} href={'#/book/' + b.id}
+              onEdit={() => setForm({ book: b })} onDelete={() => setDel(b)} />
           ))}
-          {empty && <button className="card dashed" onClick={() => setDlg({ kind: 'new' })}>+ Add your first book</button>}
+          {empty && <AddBookCard onClick={() => setForm({})} />}
         </div>
       )}
-      {books && !empty && shown.length === 0 && <p className="mute">No books with that status.</p>}
+      {books && !empty && shown.length === 0 && <EmptyState style={{ margin: '32px 0' }}>No books match. Try a different search or status.</EmptyState>}
+      {empty && <EmptyState style={{ margin: '16px 0 0', maxWidth: 480 }}>Your shelf is empty. Add the book you are reading now, then start collecting words, characters and highlights.</EmptyState>}
+    </>
+  )
 
-      {dlg?.kind === 'new' && <BookDialog books={books || []} onClose={() => setDlg(null)} onSaved={id => { setDlg(null); go('/book/' + id) }} />}
-      {dlg?.kind === 'edit' && <BookDialog book={dlg.book} onClose={() => setDlg(null)} onSaved={() => { setDlg(null); load() }} />}
-      {dlg?.kind === 'delete' && (
-        <Dialog title={'Delete “' + dlg.book.title + '”?'} onClose={() => setDlg(null)} footer={<>
-          <button className="btn" autoFocus onClick={() => setDlg(null)}>Cancel</button>
-          <button className="btn danger" onClick={() => remove(dlg.book)}>Delete</button></>}>
-          <p className="mute" style={{ margin: 0 }}>Its highlights, characters, ties and words go with it. You can undo for a short while.</p>
-        </Dialog>
+  return (
+    <AppShell platform={platform}>
+      {m ? <ScrollArea>{body}</ScrollArea> : <Container>{body}</Container>}
+      {form && <BookForm kind={m ? 'bottom' : 'drawer'} book={form.book} books={all} onClose={() => setForm(null)}
+        onSaved={(id, wasNew) => { setForm(null); if (wasNew) go('/book/' + id); else { toast('Details saved'); load() } }} />}
+      {del && (
+        <ConfirmDialog title={<>Delete <span>{del.title}</span>?</>} confirmLabel="Delete book" onCancel={() => setDel(null)} onConfirm={() => remove(del)}>
+          This removes the book with its {del.chars} characters, {del.ties} ties, {del.hl} highlights and {del.words} words. You can undo right after.
+        </ConfirmDialog>
       )}
-    </main>
+    </AppShell>
   )
 }
 
-function BookDialog({ book, books, onClose, onSaved }) {
+function BookForm({ kind, book, books, onClose, onSaved }) {
   const [title, setTitle] = useState(book?.title || ''), [author, setAuthor] = useState(book?.author || '')
   const [status, setStatus] = useState(book?.status || 'Reading'), [copy, setCopy] = useState('')
   const [err, setErr] = useState(''), [busy, setBusy] = useState(false)
+  const lg = kind === 'bottom' ? 'lg' : 'md'
 
   async function save(e) {
-    e.preventDefault()
+    e && e.preventDefault()
     const t = title.trim()
     if (!t) return setErr('Give the book a title.')
     setBusy(true); setErr('')
     if (book) {
       const { error } = await supabase.from('books').update({ title: t, author: author.trim() || null, status }).eq('id', book.id)
-      setBusy(false); return error ? setErr(error.message) : onSaved(book.id)
+      setBusy(false); return error ? setErr('Could not save the details. Try again in a moment.') : onSaved(book.id, false)
     }
-    const { data, error } = await supabase.rpc('create_book', { p_title: t, p_author: author.trim() || null, p_status: status, p_copy_from: copy || null })
-    setBusy(false); error ? setErr(error.message) : onSaved(data)
+    const { data, error } = await supabase.rpc('create_book', {
+      p_title: t, p_author: author.trim() || null, p_status: status, p_copy_from: copy || null, p_color: coverColor(books.length),
+    })
+    setBusy(false); error ? setErr('Could not create the book. Try again in a moment.') : onSaved(data, true)
   }
   return (
-    <Dialog title={book ? 'Edit book' : 'New book'} onClose={onClose}>
-      <form className="stack" onSubmit={save} noValidate>
-        <Field label="Title"><input className="inp" value={title} maxLength={200} onChange={e => setTitle(e.target.value)} /></Field>
-        <Field label="Author (optional)"><input className="inp" value={author} maxLength={200} onChange={e => setAuthor(e.target.value)} /></Field>
-        <Field label="Status"><select className="inp" value={status} onChange={e => setStatus(e.target.value)}>{STATUSES.map(s => <option key={s}>{s}</option>)}</select></Field>
-        {!book && books.length > 0 && (
-          <Field label="Copy tie types from (optional)">
-            <select className="inp" value={copy} onChange={e => setCopy(e.target.value)}>
-              <option value="">Start with none</option>
-              {books.map(b => <option key={b.id} value={b.id}>{b.title}</option>)}
-            </select>
-          </Field>
-        )}
-        <Err>{err}</Err>
-        <div className="foot" style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
-          <button type="button" className="btn" onClick={onClose}>Cancel</button>
-          <button className="btn primary" disabled={busy}>{book ? 'Save' : 'Create book'}</button>
+    <FormOverlay kind={kind} title={book ? 'Edit book' : 'New book'} onClose={onClose}>
+      <form onSubmit={save} noValidate style={{ display: 'contents' }}>
+        <Field label="Title">
+          <TextInput size={lg} invalid={!!err} value={title} maxLength={200} placeholder="Book title" onChange={e => { setTitle(e.target.value); setErr('') }} />
+        </Field>
+        <Field label="Author (optional)">
+          <TextInput size={lg} value={author} maxLength={200} placeholder="For example, M. Ostrander" onChange={e => setAuthor(e.target.value)} />
+        </Field>
+        <div>
+          <Eyebrow style={{ marginBottom: 8 }}>Status</Eyebrow>
+          <div role="group" aria-label="Status" className="app-wrap">
+            {STATUSES.map(s => <Chip key={s} size={kind === 'bottom' ? 'touch' : 'md'} selected={status === s} onClick={() => setStatus(s)}>{s}</Chip>)}
+          </div>
         </div>
+        {!book && books.length > 0 && (
+          <>
+            <Field label="Tie types">
+              <Select size={lg} value={copy} onChange={e => setCopy(e.target.value)}>
+                <option value="">Start with none</option>
+                {books.map(b => <option key={b.id} value={b.id}>Copy from {b.title}</option>)}
+              </Select>
+            </Field>
+            <div className="app-meta">Tie types belong to each book. Copying gives the new book its own copy, so changing it later does not affect the original.</div>
+          </>
+        )}
+        {err && <ErrorText>{err}</ErrorText>}
+        <Button type="submit" disabled={busy}>{book ? 'Save changes' : 'Create book'}</Button>
       </form>
-    </Dialog>
+    </FormOverlay>
   )
 }
