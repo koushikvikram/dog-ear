@@ -216,7 +216,8 @@ function NoteCards({ d, c, platform }) {
     setEdit(null)   // the card shows at once; the editor comes back with the text if the save fails
     if (await save(edit.id ? cards.map(x => (x.id === edit.id ? card : x)) : [...cards, card])) setEdit(was)
   }
-  const move = (i, by) => { const next = cards.slice(); next.splice(i + by, 0, next.splice(i, 1)[0]); save(next) }
+  const moveTo = (from, to) => { if (to === from || to < 0 || to >= cards.length) return; const next = cards.slice(); next.splice(to, 0, next.splice(from, 1)[0]); save(next) }
+  const drag = useDragOrder(cards, moveTo, !edit && cards.length > 1)
   function remove(x, i) {
     if (edit?.id === x.id) setEdit(null)
     save(cards.filter(y => y.id !== x.id))
@@ -238,20 +239,19 @@ function NoteCards({ d, c, platform }) {
     </div>
   )
   const card = (x, i) => edit?.id === x.id ? <Panel key={x.id} platform={platform}>{editor}</Panel> : (
-    <Panel key={x.id} platform={platform} style={{ display: 'flex', alignItems: 'flex-start', gap: 2, padding: '6px 4px 6px 14px' }}>
-      <button type="button" onClick={() => open(x)} aria-label={'Edit note: ' + x.text}
-        style={{ flex: 1, minWidth: 0, minHeight: 44, padding: '6px 0', display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 2, textAlign: 'left' }}>
-        <span style={{ fontSize: 14, lineHeight: 1.5, color: 'var(--text-secondary)', whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>{x.text}</span>
-        {x.page ? <span className="app-meta">p. {x.page}</span> : null}
-      </button>
-      {cards.length > 1 && <>
-        <IconButton platform={platform} muted label="Move note up" icon="chevron-down" iconSize={14} onClick={() => move(i, -1)}
-          style={{ transform: 'rotate(180deg)', visibility: i > 0 ? 'visible' : 'hidden' }} />
-        <IconButton platform={platform} muted label="Move note down" icon="chevron-down" iconSize={14} onClick={() => move(i, 1)}
-          style={{ visibility: i < cards.length - 1 ? 'visible' : 'hidden' }} />
-      </>}
-      <IconButton platform={platform} muted label="Delete note" icon="trash-simple" iconSize={16} onClick={() => remove(x, i)} />
-    </Panel>
+    <div key={x.id} {...drag.itemProps(x.id, i)}>
+      <Panel platform={platform} style={{ display: 'flex', alignItems: 'flex-start', gap: 2, padding: '6px 4px 6px 14px',
+        boxShadow: drag.dragging === x.id ? 'var(--shadow-node)' : undefined, borderColor: drag.dragging === x.id ? 'var(--border-strong)' : undefined }}>
+        <button type="button" onClick={() => { if (!drag.justDropped()) open(x) }} aria-label={'Edit note: ' + x.text}
+          aria-keyshortcuts={cards.length > 1 ? 'Alt+ArrowUp Alt+ArrowDown' : undefined}
+          onKeyDown={e => { if (e.altKey && (e.key === 'ArrowUp' || e.key === 'ArrowDown')) { e.preventDefault(); moveTo(i, i + (e.key === 'ArrowUp' ? -1 : 1)) } }}
+          style={{ flex: 1, minWidth: 0, minHeight: 44, padding: '6px 0', display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 2, textAlign: 'left', cursor: 'inherit' }}>
+          <span style={{ fontSize: 14, lineHeight: 1.5, color: 'var(--text-secondary)', whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>{x.text}</span>
+          {x.page ? <span className="app-meta">p. {x.page}</span> : null}
+        </button>
+        <IconButton data-nodrag platform={platform} muted label="Delete note" icon="trash-simple" iconSize={16} onClick={() => remove(x, i)} />
+      </Panel>
+    </div>
   )
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -260,11 +260,80 @@ function NoteCards({ d, c, platform }) {
         {!(edit && !edit.id) && <TextButton onClick={() => open(null)}>+ Add note</TextButton>}
       </div>
       {cards.length === 0 && !edit && <div style={{ fontSize: 14, color: 'var(--text-muted)' }}>No notes yet. Add the first thing you notice about {first(c)}.</div>}
-      {cards.map(card)}
+      {cards.length > 1 && !edit && <div className="app-meta" style={{ marginTop: -4 }}>{m ? 'Press and hold a card, then drag it to reorder.' : 'Drag a card to reorder.'}</div>}
+      <div ref={drag.listRef} style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>{cards.map(card)}</div>
       {edit && !edit.id && <Panel platform={platform}>{editor}</Panel>}
       {err && !edit && <ErrorText>{err}</ErrorText>}
     </div>
   )
+}
+
+// Drag to reorder a vertical list. Mouse: drag past 4px (a plain click still clicks). Touch: hold 350ms, then drag
+// (a quick swipe still scrolls). The dragged item follows the pointer; the others slide aside to show where it lands.
+function useDragOrder(items, onMove, enabled) {
+  const listRef = useRef(), els = useRef({}), g = useRef(null), dropped = useRef(0)
+  const [v, setV] = useState(null)   // { id, from, to, dy, h }
+  const vr = useRef(null)   // the same, current between renders (the drop reads it)
+  const show = next => { vr.current = next; setV(next) }
+  const cb = useRef(); cb.current = { onMove }
+  // Once a touch drag has started, stop the page or sheet from scrolling under the finger.
+  useEffect(() => {
+    const el = listRef.current
+    if (!el) return
+    const stop = e => { if (g.current?.active) e.preventDefault() }
+    el.addEventListener('touchmove', stop, { passive: false })
+    return () => el.removeEventListener('touchmove', stop)
+  }, [enabled])
+  const begin = s => {
+    clearTimeout(s.timer); s.active = true
+    try { s.el.setPointerCapture(s.pid) } catch { /* pointer already gone */ }
+    if (s.touch && navigator.vibrate) navigator.vibrate(10)
+    show({ id: s.id, from: s.from, to: s.from, dy: 0, h: s.rects[s.from].height + 8 })
+  }
+  const end = commit => {
+    const s = g.current; g.current = null
+    if (!s) return
+    clearTimeout(s.timer)
+    if (!s.active) return
+    dropped.current = Date.now()
+    const cur = vr.current
+    show(null)
+    if (commit && cur && cur.to !== cur.from) cb.current.onMove(cur.from, cur.to)
+  }
+  const itemProps = (id, i) => ({
+    ref: el => { if (el) els.current[id] = el; else delete els.current[id] },
+    onPointerDown: e => {
+      if (!enabled || e.button > 0 || e.target.closest('[data-nodrag]')) return
+      const rects = items.map(x => els.current[x.id]?.getBoundingClientRect()).filter(Boolean)
+      if (rects.length !== items.length) return
+      const s = { id, from: i, pid: e.pointerId, x0: e.clientX, y0: e.clientY, el: e.currentTarget, touch: e.pointerType !== 'mouse', active: false, rects }
+      g.current = s
+      if (s.touch) s.timer = setTimeout(() => g.current === s && begin(s), 350)
+    },
+    onPointerMove: e => {
+      const s = g.current
+      if (!s || e.pointerId !== s.pid) return
+      const dx = e.clientX - s.x0, dy = e.clientY - s.y0
+      if (!s.active) {
+        if (Math.hypot(dx, dy) > (s.touch ? 8 : 4)) s.touch ? end(false) : begin(s)
+        return
+      }
+      const r = s.rects[s.from], mid = r.top + r.height / 2 + dy
+      const to = s.rects.reduce((n, q, j) => (j !== s.from && q.top + q.height / 2 < mid ? n + 1 : n), 0)
+      if (vr.current) show({ ...vr.current, dy, to })
+    },
+    onPointerUp: e => { if (g.current?.pid === e.pointerId) end(true) },
+    onPointerCancel: () => end(false),
+    onContextMenu: e => { if (g.current) e.preventDefault() },   // a long press opens no menu
+    style: (() => {
+      const base = { position: 'relative', touchAction: 'pan-y', userSelect: 'none', WebkitUserSelect: 'none', WebkitTouchCallout: 'none', cursor: enabled ? 'grab' : undefined }
+      if (!v) return base
+      if (v.id === id) return { ...base, transform: `translateY(${v.dy}px)`, zIndex: 2, cursor: 'grabbing' }
+      const shift = v.from < v.to && i > v.from && i <= v.to ? -v.h : v.to < v.from && i >= v.to && i < v.from ? v.h : 0
+      return { ...base, transform: `translateY(${shift}px)`, transition: 'transform 150ms ease' }
+    })(),
+  })
+  return { listRef, itemProps, dragging: v?.id || null, justDropped: () => Date.now() - dropped.current < 300 }
 }
 
 // Every highlight this character is tagged in, by page. Read-only here: choosing one opens it in Highlights.
