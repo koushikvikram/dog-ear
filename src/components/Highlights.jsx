@@ -12,7 +12,7 @@ const chipRow = { display: 'flex', flexWrap: 'wrap', gap: 6 }
 const cap = { fontSize: 12, color: 'var(--text-muted)', marginBottom: 6 }
 const toggle = (list, id) => (list.includes(id) ? list.filter(x => x !== id) : [...list, id])
 
-export default function Highlights({ d, platform, header, onQueued }) {
+export default function Highlights({ d, platform, header, onQueued, focusId, onFocused }) {
   const m = platform === 'mobile'
   const toast = useToast()
   const [page, setPage] = useState(''), [note, setNote] = useState(''), [quote, setQuote] = useState('')
@@ -24,6 +24,13 @@ export default function Highlights({ d, platform, header, onQueued }) {
   const dict = useDictation(t => { setNote(n => joinText(n, t)); setMsg('') }, setMsg)
 
   useEffect(() => { if (labelId && !d.labels.some(l => l.id === labelId)) setLabelId('') }, [d.labels, labelId])
+  // opened from a character on the graph: show that highlight
+  useEffect(() => {
+    if (!focusId) return
+    const h = d.highlights.find(x => x.id === focusId)
+    if (h) { setFilter('all'); setForm({ h }) }
+    onFocused && onFocused()
+  }, [focusId])  // eslint-disable-line
   useEffect(() => { if (filter !== 'all' && filter !== 'none' && !d.labels.some(l => l.id === filter)) setFilter('all') }, [d.labels, filter])
 
   async function save() {
