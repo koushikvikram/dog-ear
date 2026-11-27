@@ -1,4 +1,4 @@
-/* @ds-bundle: {"format":4,"namespace":"DogEar","components":[{"name":"Icon"},{"name":"AppShell"},{"name":"Container"},{"name":"ScrollArea"},{"name":"AppBody"},{"name":"Wordmark"},{"name":"Button"},{"name":"IconButton"},{"name":"TextButton"},{"name":"MicButton"},{"name":"MicPill"},{"name":"Fab"},{"name":"SegmentedControl"},{"name":"Tab"},{"name":"Tabs"},{"name":"BottomTabBar"},{"name":"Chip"},{"name":"Dot"},{"name":"Badge"},{"name":"Field"},{"name":"TextInput"},{"name":"Select"},{"name":"TextArea"},{"name":"SearchField"},{"name":"Honeypot"},{"name":"ErrorText"},{"name":"Eyebrow"},{"name":"EmptyState"},{"name":"AuthCard"},{"name":"Panel"},{"name":"FeatureTile"},{"name":"SuccessDisc"},{"name":"BookCover"},{"name":"BookCard"},{"name":"AddBookCard"},{"name":"RequestRow"},{"name":"WordEntry"},{"name":"WordCard"},{"name":"Suggestion"},{"name":"Note"},{"name":"HighlightRow"},{"name":"HighlightCard"},{"name":"SwatchRow"},{"name":"Scrim"},{"name":"Drawer"},{"name":"DrawerHeader"},{"name":"DrawerBody"},{"name":"Sheet"},{"name":"SheetHeader"},{"name":"Dialog"},{"name":"Toast"},{"name":"AccountButton"},{"name":"Menu"},{"name":"MenuItem"},{"name":"Popover"},{"name":"SyncStatus"},{"name":"HintBar"},{"name":"ActionBanner"},{"name":"SelectionBar"},{"name":"AppHeader"},{"name":"GraphCanvas"},{"name":"CharacterNode"},{"name":"NodePill"},{"name":"TieLabel"},{"name":"CanvasToolbar"},{"name":"GraphControls"}]} */
+/* @ds-bundle: {"format":4,"namespace":"DogEar","components":[{"name":"Icon"},{"name":"AppShell"},{"name":"Container"},{"name":"ScrollArea"},{"name":"AppBody"},{"name":"Wordmark"},{"name":"Button"},{"name":"IconButton"},{"name":"TextButton"},{"name":"MicButton"},{"name":"MicPill"},{"name":"Fab"},{"name":"SegmentedControl"},{"name":"Tab"},{"name":"Tabs"},{"name":"BottomTabBar"},{"name":"Chip"},{"name":"Dot"},{"name":"Badge"},{"name":"Field"},{"name":"TextInput"},{"name":"Select"},{"name":"TextArea"},{"name":"SearchField"},{"name":"Honeypot"},{"name":"ErrorText"},{"name":"Eyebrow"},{"name":"SectionHeader"},{"name":"EmptyState"},{"name":"AuthCard"},{"name":"Panel"},{"name":"FeatureTile"},{"name":"SuccessDisc"},{"name":"BookCover"},{"name":"BookCard"},{"name":"AddBookCard"},{"name":"RequestRow"},{"name":"WordEntry"},{"name":"WordCard"},{"name":"Suggestion"},{"name":"Note"},{"name":"HighlightRow"},{"name":"HighlightCard"},{"name":"SwatchRow"},{"name":"Scrim"},{"name":"Drawer"},{"name":"DrawerHeader"},{"name":"DrawerBody"},{"name":"Sheet"},{"name":"SheetHeader"},{"name":"Dialog"},{"name":"Toast"},{"name":"AccountButton"},{"name":"Menu"},{"name":"MenuItem"},{"name":"Popover"},{"name":"SyncStatus"},{"name":"HintBar"},{"name":"ActionBanner"},{"name":"SelectionBar"},{"name":"AppHeader"},{"name":"GraphCanvas"},{"name":"CharacterNode"},{"name":"NodePill"},{"name":"TieLabel"},{"name":"CanvasToolbar"},{"name":"GraphControls"}]} */
 (() => {
   var __defProp = Object.defineProperty;
   var __export = (target, all) => {
@@ -55,6 +55,7 @@
     Scrim: () => Scrim,
     ScrollArea: () => ScrollArea,
     SearchField: () => SearchField,
+    SectionHeader: () => SectionHeader,
     SegmentedControl: () => SegmentedControl,
     Select: () => Select,
     SelectionBar: () => SelectionBar,
@@ -192,6 +193,10 @@
   }
   function Eyebrow({ as = "div", className, children, ...rest }) {
     return /* @__PURE__ */ React2.createElement(as, { ...rest, className: cx("de-eyebrow", className) }, children);
+  }
+  function SectionHeader({ title, count, action, actionLabel, onAction, className, ...rest }) {
+    const act = action || (actionLabel ? /* @__PURE__ */ React2.createElement(TextButton, { onClick: onAction }, actionLabel) : null);
+    return /* @__PURE__ */ React2.createElement("div", { ...rest, className: cx("de-sechead", className) }, /* @__PURE__ */ React2.createElement(Eyebrow, null, title, count ? " (" + count + ")" : null), act);
   }
   function EmptyState({ className, children, ...rest }) {
     return /* @__PURE__ */ React2.createElement("p", { ...rest, className: cx("de-empty", className) }, children);

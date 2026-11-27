@@ -12,7 +12,7 @@ export const {
   BottomTabBar, Button, CanvasToolbar, CharacterNode, Chip, Container, Dialog, Dot, Drawer, DrawerBody, DrawerHeader,
   EmptyState, ErrorText, Eyebrow, Fab, FeatureTile, Field, GraphCanvas, GraphControls, HighlightCard, HighlightRow,
   HintBar, Honeypot, Icon, IconButton, Menu, MenuItem, MicButton, MicPill, NodePill, Note, Panel, Popover, RequestRow,
-  Scrim, ScrollArea, SearchField, SegmentedControl, Select, SelectionBar, Sheet, SheetHeader, SuccessDisc, Suggestion,
+  Scrim, ScrollArea, SearchField, SectionHeader, SegmentedControl, Select, SelectionBar, Sheet, SheetHeader, SuccessDisc, Suggestion,
   SwatchRow, SyncStatus, Tab, Tabs, TextArea, TextButton, TextInput, TieLabel, Toast, WordCard, WordEntry, Wordmark,
 } = DS
 
