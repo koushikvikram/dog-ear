@@ -693,7 +693,17 @@ function CharDrawer({ d, c, byId, typesById, onClose, onOpenTie, onJump, onTie, 
   const closeAdd = () => { setAdding(false); setTo(''); setTieErr('') }
   const addTie = () => to ? onTie(to) : setTieErr('Choose who ' + first(c) + ' is tied to.')
   const aliases = c.aliases || []
-  const addAka = e => { e.preventDefault(); const v = aka.trim(); if (v && !aliases.includes(v)) d.updateCharacter(c.id, { aliases: [...aliases, v] }); setAka('') }
+  const [akaOpen, setAkaOpen] = useState(false), [akaErr, setAkaErr] = useState('')
+  const closeAka = () => { setAkaOpen(false); setAka(''); setAkaErr('') }
+  // Enter adds the name and keeps the field open for the next one; Enter on an empty field is done.
+  const addAka = e => {
+    e.preventDefault()
+    const v = aka.trim()
+    if (!v) return closeAka()
+    const same = [c.name, ...aliases].find(x => x.toLowerCase() === v.toLowerCase())
+    if (same) return setAkaErr(first(c) + ' already goes by ' + same + '.')
+    d.updateCharacter(c.id, { aliases: [...aliases, v] }); setAka(''); setAkaErr('')
+  }
   const rels = d.ties.filter(t => t.from_character_id === c.id || t.to_character_id === c.id).map(t => {
     const out = t.from_character_id === c.id, o = byId[out ? t.to_character_id : t.from_character_id], ts = typeStyle(typesById, t.tie_type_id), lb = t.label || 'untitled tie'
     if (!o) return null
@@ -709,18 +719,25 @@ function CharDrawer({ d, c, byId, typesById, onClose, onOpenTie, onJump, onTie, 
           <Button variant="subtle" size="sm" onClick={() => setRenaming(true)}>Rename</Button>
         </div>}
       <div>
-        <div style={chipRow}>
+        <SectionHeader title="Also known as" count={aliases.length} actionLabel={akaOpen ? undefined : '+ Add name'} onAction={() => setAkaOpen(true)} />
+        {aliases.length > 0 && <div style={{ ...chipRow, marginTop: 4 }}>
           {aliases.map(a => (
             <span key={a} style={{ display: 'inline-flex', alignItems: 'center', background: 'var(--surface-raised)', borderRadius: 999, padding: '2px 2px 2px 12px', fontSize: 13 }}>
               {a}<button type="button" onClick={() => d.updateCharacter(c.id, { aliases: aliases.filter(x => x !== a) })} aria-label={'Remove alias ' + a}
                 style={{ width: 36, height: 36, borderRadius: '50%', color: 'var(--text-muted)', textAlign: 'center' }}>{'×'}</button>
             </span>
           ))}
-        </div>
-        <form onSubmit={addAka} style={{ display: 'flex', gap: 8, marginTop: 8 }}>
-          <TextInput style={{ flex: 1, minWidth: 0 }} value={aka} onChange={e => setAka(e.target.value)} placeholder="Add another name" aria-label="New alias" />
-          <Button variant="subtle" type="submit">Add</Button>
-        </form>
+        </div>}
+        {akaOpen && (
+          <form onSubmit={addAka} style={{ display: 'flex', gap: 8, marginTop: 8 }}
+            onBlur={e => { if (!e.currentTarget.contains(e.relatedTarget) && !aka.trim()) closeAka() }}>
+            <TextInput autoFocus style={{ flex: 1, minWidth: 0 }} value={aka} invalid={!!akaErr} maxLength={120} placeholder="For example, The Cartographer"
+              aria-label={'Another name for ' + first(c)} onChange={e => { setAka(e.target.value); setAkaErr('') }}
+              onKeyDown={e => { if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); closeAka() } }} />
+            <Button variant="subtle" type="submit">Add</Button>
+          </form>
+        )}
+        {akaErr && <ErrorText style={{ marginTop: 6 }}>{akaErr}</ErrorText>}
       </div>
       <div style={{ display: 'flex', gap: 10 }}>
         <Field label="Role or job" style={{ flex: 1 }}><TextInput value={job} onChange={e => setJob(e.target.value)} onBlur={commitJob} /></Field>
