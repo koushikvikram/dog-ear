@@ -273,6 +273,8 @@ function NoteCards({ d, c, platform }) {
 function useDragOrder(items, onMove, enabled) {
   const listRef = useRef(), els = useRef({}), g = useRef(null), dropped = useRef(0)
   const [v, setV] = useState(null)   // { id, from, to, dy, h }
+  const vr = useRef(null)   // the same, current between renders (the drop reads it)
+  const show = next => { vr.current = next; setV(next) }
   const cb = useRef(); cb.current = { onMove }
   // Once a touch drag has started, stop the page or sheet from scrolling under the finger.
   useEffect(() => {
@@ -286,7 +288,7 @@ function useDragOrder(items, onMove, enabled) {
     clearTimeout(s.timer); s.active = true
     try { s.el.setPointerCapture(s.pid) } catch { /* pointer already gone */ }
     if (s.touch && navigator.vibrate) navigator.vibrate(10)
-    setV({ id: s.id, from: s.from, to: s.from, dy: 0, h: s.rects[s.from].height + 8 })
+    show({ id: s.id, from: s.from, to: s.from, dy: 0, h: s.rects[s.from].height + 8 })
   }
   const end = commit => {
     const s = g.current; g.current = null
@@ -294,7 +296,9 @@ function useDragOrder(items, onMove, enabled) {
     clearTimeout(s.timer)
     if (!s.active) return
     dropped.current = Date.now()
-    setV(cur => { if (commit && cur && cur.to !== cur.from) cb.current.onMove(cur.from, cur.to); return null })
+    const cur = vr.current
+    show(null)
+    if (commit && cur && cur.to !== cur.from) cb.current.onMove(cur.from, cur.to)
   }
   const itemProps = (id, i) => ({
     ref: el => { if (el) els.current[id] = el; else delete els.current[id] },
@@ -316,7 +320,7 @@ function useDragOrder(items, onMove, enabled) {
       }
       const r = s.rects[s.from], mid = r.top + r.height / 2 + dy
       const to = s.rects.reduce((n, q, j) => (j !== s.from && q.top + q.height / 2 < mid ? n + 1 : n), 0)
-      setV(cur => cur && { ...cur, dy, to })
+      if (vr.current) show({ ...vr.current, dy, to })
     },
     onPointerUp: e => { if (g.current?.pid === e.pointerId) end(true) },
     onPointerCancel: () => end(false),
