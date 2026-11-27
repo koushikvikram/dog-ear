@@ -691,6 +691,10 @@ function CharDrawer({ d, c, byId, typesById, onClose, onOpenTie, onJump, onTie, 
   const [job, setJob, commitJob] = useSaved(c.profession, v => save('profession')(v.trim() || null))
   const [pg, setPg, commitPg] = useSaved(c.first_page ? String(c.first_page) : '', v => save('first_page')(v ? Number(v) : null))
   const [aka, setAka] = useState(''), [to, setTo] = useState(''), [renaming, setRenaming] = useState(false)
+  const [adding, setAdding] = useState(false), [tieErr, setTieErr] = useState('')
+  const canTie = d.characters.length > 1
+  const closeAdd = () => { setAdding(false); setTo(''); setTieErr('') }
+  const addTie = () => to ? onTie(to) : setTieErr('Choose who ' + first(c) + ' is tied to.')
   const aliases = c.aliases || []
   const addAka = e => { e.preventDefault(); const v = aka.trim(); if (v && !aliases.includes(v)) d.updateCharacter(c.id, { aliases: [...aliases, v] }); setAka('') }
   const rels = d.ties.filter(t => t.from_character_id === c.id || t.to_character_id === c.id).map(t => {
@@ -728,8 +732,15 @@ function CharDrawer({ d, c, byId, typesById, onClose, onOpenTie, onJump, onTie, 
       <NoteCards d={d} c={c} platform="desktop" />
       <TaggedHighlights d={d} c={c} platform="desktop" onOpen={onOpenHighlight} />
       <div>
-        <Eyebrow style={{ marginBottom: 6 }}>Ties</Eyebrow>
-        {rels.length === 0 && <div style={{ fontSize: 14, color: 'var(--text-muted)', padding: '8px 0' }}>No ties yet. Drag from the green handle on the graph, or add one below.</div>}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, minHeight: 32 }}>
+          <Eyebrow>Ties{rels.length ? ' (' + rels.length + ')' : ''}</Eyebrow>
+          {canTie && !adding && <TextButton onClick={() => setAdding(true)} aria-expanded={false}>+ Add tie</TextButton>}
+        </div>
+        {rels.length === 0 && !adding && (
+          <div style={{ fontSize: 14, color: 'var(--text-muted)', padding: '8px 0' }}>
+            No ties yet. {canTie ? 'Use + Add tie, or drag from the green handle on the graph.' : 'Add another character to tie ' + first(c) + ' to.'}
+          </div>
+        )}
         {rels.map(r => (
           <div key={r.t.id} style={{ display: 'flex', alignItems: 'center', gap: 4, borderBottom: '1px solid var(--divider)' }}>
             <button type="button" onClick={() => onOpenTie(r.t.id)} aria-label={'Edit tie with ' + r.o.name}
@@ -741,15 +752,20 @@ function CharDrawer({ d, c, byId, typesById, onClose, onOpenTie, onJump, onTie, 
           </div>
         ))}
       </div>
-      {d.characters.length > 1 && (
-        <Panel style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-          <Eyebrow>Add a tie from {first(c)}</Eyebrow>
-          <Select aria-label="Tie to" value={to} onChange={e => setTo(e.target.value)}>
-            <option value="">Choose a character</option>
-            {d.characters.filter(o => o.id !== c.id).map(o => <option key={o.id} value={o.id}>{o.name}</option>)}
-          </Select>
-          <Button variant="subtle" onClick={() => to && onTie(to)}>Add tie</Button>
-          <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>You can also drag from the green handle on the graph.</div>
+      {canTie && adding && (
+        <Panel style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: -6 }}>
+          <Field label={first(c) + ' is tied to'}>
+            <Select autoFocus invalid={!!tieErr} value={to} onChange={e => { setTo(e.target.value); setTieErr('') }}
+              onKeyDown={e => { if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); closeAdd() } }}>
+              <option value="">Choose a character</option>
+              {d.characters.filter(o => o.id !== c.id).map(o => <option key={o.id} value={o.id}>{o.name}</option>)}
+            </Select>
+          </Field>
+          {tieErr && <ErrorText>{tieErr}</ErrorText>}
+          <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+            <Button variant="subtle" onClick={closeAdd}>Cancel</Button>
+            <Button onClick={addTie}>Add tie</Button>
+          </div>
         </Panel>
       )}
       <Button variant="subtle" tone="danger" onClick={onRemove}>Remove character</Button>
@@ -819,7 +835,7 @@ function PhoneGraph({ d, onOpenHighlight }) {
 
   return (
     <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column' }}>
-      {hint && <HintBar platform="mobile" onDismiss={() => { hideTip(); setHint(false) }}>Tap a character to see its ties, then Edit or Link to. Drag a character to move it, or the background to pan. Ties opens tie types.</HintBar>}
+      {hint && <HintBar platform="mobile" onDismiss={() => { hideTip(); setHint(false) }}>Tap a character to see its notes and ties. Use + Add tie there to link it to someone else. Drag a character to move it, or the background to pan. Ties opens tie types.</HintBar>}
       <div ref={cv.ref} {...cv.handlers} style={{ flex: 1, minHeight: 0, marginTop: 12, display: 'flex', touchAction: 'none' }}>
       <GraphCanvas style={{ flex: 1, minHeight: 0, cursor: 'grab',
         backgroundSize: 22 * view.k + 'px ' + 22 * view.k + 'px', backgroundPosition: view.tx + 'px ' + view.ty + 'px' }}>
@@ -892,8 +908,13 @@ function CharSheet({ d, c, byId, typesById, onClose, onTie, onLink, onEdit, onRe
       </div>}>
       {c.aliases?.length > 0 && <div style={{ fontSize: 13, color: 'var(--text-secondary)' }}>Also known as {c.aliases.join(', ')}</div>}
       <NoteCards d={d} c={c} platform="mobile" />
-      <Eyebrow style={{ marginTop: 4 }}>Ties</Eyebrow>
-      {rels.length === 0 && <div style={{ fontSize: 14, color: 'var(--text-muted)' }}>No ties yet. Use Link to{'…'} to connect this character.</div>}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, minHeight: 32, marginTop: 4 }}>
+        <Eyebrow>Ties{rels.length ? ' (' + rels.length + ')' : ''}</Eyebrow>
+        {d.characters.length > 1 && <TextButton onClick={onLink}>+ Add tie</TextButton>}
+      </div>
+      {rels.length === 0 && <div style={{ fontSize: 14, color: 'var(--text-muted)' }}>
+        No ties yet. {d.characters.length > 1 ? 'Use + Add tie, then tap who ' + first(c) + ' is tied to.' : 'Add another character to tie ' + first(c) + ' to.'}
+      </div>}
       {rels.map(r => (
         <button key={r.t.id} type="button" onClick={() => onTie(r.t)} aria-label={'Edit tie: ' + r.text}
           style={{ display: 'flex', alignItems: 'center', gap: 10, minHeight: 44, width: '100%', fontSize: 14 }}>
@@ -901,7 +922,6 @@ function CharSheet({ d, c, byId, typesById, onClose, onTie, onLink, onEdit, onRe
         </button>
       ))}
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-        {d.characters.length > 1 && <Button onClick={onLink}>Link to{'…'}</Button>}
         <Button variant="subtle" platform="mobile" onClick={onEdit}>Edit</Button>
         <Button variant="subtle" platform="mobile" tone="danger" onClick={onRemove}>Remove</Button>
       </div>
