@@ -21,6 +21,8 @@ export default function Book({ bookId }) {
   const platform = usePlatform(), m = platform === 'mobile'
   const d = useBookData(bookId)
   const [tab, setTab] = useState('hl')
+  const [focusHl, setFocusHl] = useState(null)   // a highlight chosen from a character, opened on the Highlights tab
+  const openHighlight = id => { setFocusHl(id); setTab('hl') }
   const [switcher, setSwitcher] = useState(false)
   const [queuedN, setQueuedN] = useState(0)
   const [online, setOnline] = useState(navigator.onLine)
@@ -57,7 +59,8 @@ export default function Book({ bookId }) {
   if (m) return (
     <AppShell platform="mobile">
       <AppHeader title={d.book?.title || 'Book'} backHref="#/" backLabel="Back to Your books" trailing={ready ? sync : null} />
-      <AppBody>{body || <Section key={bookId} d={d} platform="mobile" header={() => null} onQueued={refreshQueue} />}</AppBody>
+      <AppBody>{body || <Section key={bookId} d={d} platform="mobile" header={() => null} onQueued={refreshQueue}
+        onOpenHighlight={openHighlight} focusId={focusHl} onFocused={() => setFocusHl(null)} />}</AppBody>
       <BottomTabBar items={[
         { label: 'Highlights', icon: 'highlight-tab', selected: tab === 'hl', onClick: () => setTab('hl') },
         { label: 'Characters', icon: 'graph', selected: tab === 'chars', onClick: () => setTab('chars') },
@@ -99,7 +102,8 @@ export default function Book({ bookId }) {
             </Button>
           )}
         </div>
-        {body || <Section key={bookId} d={d} platform="desktop" header={header} onQueued={refreshQueue} />}
+        {body || <Section key={bookId} d={d} platform="desktop" header={header} onQueued={refreshQueue}
+          onOpenHighlight={openHighlight} focusId={focusHl} onFocused={() => setFocusHl(null)} />}
       </Container>
       {switcher && <BookSwitcher current={bookId} onClose={() => setSwitcher(false)} />}
     </AppShell>

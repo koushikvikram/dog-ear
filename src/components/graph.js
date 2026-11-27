@@ -38,14 +38,19 @@ export function deskEdges(byId, ties, typesById, sel, selTie, first) {
     const A = byId[a], B = byId[b], lo = byId[srt[0]], hi = byId[srt[1]], t = typeStyle(typesById, e.tie_type_id)
     const dx = hi.x - lo.x, dy = hi.y - lo.y, len = Math.hypot(dx, dy) || 1, o = n > 1 ? 36 * (i - (n - 1) / 2) : 16
     const C = { x: (A.x + B.x) / 2 + -dy / len * o * 2, y: (A.y + B.y) / 2 + dx / len * o * 2 }
-    const S = clip(A, C), E0 = clip(B, C)
-    let ux = E0.x - C.x, uy = E0.y - C.y
-    const ul = Math.hypot(ux, uy) || 1; ux /= ul; uy /= ul
-    const T = { x: E0.x - ux * 4, y: E0.y - uy * 4 }, base = { x: T.x - ux * 14, y: T.y - uy * 14 }
+    // a head where the curve meets P (the end's box edge): its tip, the base it is drawn from, and the outline
+    const end = P => {
+      let ux = P.x - C.x, uy = P.y - C.y
+      const ul = Math.hypot(ux, uy) || 1; ux /= ul; uy /= ul
+      const T = { x: P.x - ux * 4, y: P.y - uy * 4 }, base = { x: T.x - ux * 14, y: T.y - uy * 14 }
+      return { base, path: headPath(T, base, -uy, ux, 7) }
+    }
+    const S0 = clip(A, C), hb = end(clip(B, C)), ha = e.both_ways ? end(S0) : null
+    const S = ha ? ha.base : S0, base = hb.base
     const mx = 0.25 * S.x + 0.5 * C.x + 0.25 * base.x, my = 0.25 * S.y + 0.5 * C.y + 0.25 * base.y
     const on = !!sel && (a === sel || b === sel), picked = selTie === e.id
     return {
-      id: e.id, tie: e, d: `M ${S.x} ${S.y} Q ${C.x} ${C.y} ${base.x} ${base.y}`, head: headPath(T, base, -uy, ux, 7),
+      id: e.id, tie: e, both: !!e.both_ways, d: `M ${S.x} ${S.y} Q ${C.x} ${C.y} ${base.x} ${base.y}`, head: hb.path + (ha ? ' ' + ha.path : ''),
       mx, my, color: t.color, dash: t.dash, w: on || picked ? 3.5 : 2.5,
       op: selTie ? (picked ? 1 : 0.4) : !sel || on ? 1 : 0.14,
       label: e.label || 'untitled tie', fromName: first(A), toName: first(B),
@@ -53,14 +58,15 @@ export function deskEdges(byId, ties, typesById, sel, selTie, first) {
   })
 }
 
-// Phone ties: straight 2px lines from pill edge to pill edge, an 11px head, the label above the middle.
-export function phoneEdge(a, b) {
+// Phone ties: straight 2px lines from pill edge to pill edge, an 11px head (one at each end when both ways), the label above the middle.
+export function phoneEdge(a, b, both = false) {
   const dx = b.x - a.x, dy = b.y - a.y
   const sc = Math.min(PHONE.hw / Math.max(Math.abs(dx), 1e-6), PHONE.hh / Math.max(Math.abs(dy), 1e-6))
   const x1 = a.x + dx * sc, y1 = a.y + dy * sc, x2 = b.x - dx * sc, y2 = b.y - dy * sc
   const L = Math.hypot(x2 - x1, y2 - y1) || 1, ux = (x2 - x1) / L, uy = (y2 - y1) / L, px = -uy, py = ux
-  const head = [x2, y2, x2 - ux * 11 + px * 5, y2 - uy * 11 + py * 5, x2 - ux * 11 - px * 5, y2 - uy * 11 - py * 5].map(n => n.toFixed(1)).join(' ')
-  return { x1, y1, x2: x2 - ux * 9, y2: y2 - uy * 9, head, lx: (x1 + x2) / 2, ly: (y1 + y2) / 2 - 6 }
+  const tri = (x, y, dx, dy) => [x, y, x - dx * 11 + px * 5, y - dy * 11 + py * 5, x - dx * 11 - px * 5, y - dy * 11 - py * 5].map(n => n.toFixed(1)).join(' ')
+  const head = tri(x2, y2, ux, uy), tail = both ? tri(x1, y1, -ux, -uy) : null
+  return { x1: both ? x1 + ux * 9 : x1, y1: both ? y1 + uy * 9 : y1, x2: x2 - ux * 9, y2: y2 - uy * 9, head, tail, lx: (x1 + x2) / 2, ly: (y1 + y2) / 2 - 6 }
 }
 
 // A view that shows every character: pads by half a node plus air on each side.

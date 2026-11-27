@@ -2,12 +2,12 @@ import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { supabase } from '../supabase.js'
 import {
   ActionBanner, Button, CanvasToolbar, CharacterNode, Chip, Dot, EmptyState, ErrorText, Eyebrow, Fab, Field, GraphCanvas,
-  GraphControls, HintBar, Icon, IconButton, NodePill, Panel, Popover, Select, SelectionBar, SwatchRow, Tab, TextArea,
-  TextInput, TieLabel,
+  GraphControls, HighlightRow, HintBar, Icon, IconButton, NodePill, Panel, Popover, Select, SelectionBar, SwatchRow, Tab, TextArea,
+  TextButton, TextInput, TieLabel,
 } from '../design-system/index.js'
-import { firstName as first, useToast } from '../util.jsx'
+import { firstName as first, uid, useToast } from '../util.jsx'
 import { FormOverlay } from '../ui/overlays.jsx'
-import { TIE_COLORS, TIE_UNTYPED, avatarColor, tieColor } from '../ui/palette.js'
+import { TIE_COLORS, TIE_UNTYPED, UNLABELLED, avatarColor, labelColor, tieColor } from '../ui/palette.js'
 import { useDraftNames } from './Highlights.jsx'
 import { DESK, PHONE, arrow, autoArrange, clip, deskEdges, fitView, phoneEdge, typeStyle } from './graph.js'
 
@@ -133,6 +133,176 @@ function useGraphBasics(d) {
   return { byId, typesById }
 }
 
+/* ---------------- shared: two-way ties ---------------- */
+
+// The tie that runs the other way between the same two characters (or repeats a two-way one), if any.
+const twinOf = (ties, t) => t && ties.find(u => u.id !== t.id && (
+  (u.from_character_id === t.to_character_id && u.to_character_id === t.from_character_id) ||
+  ((t.both_ways || u.both_ways) && u.from_character_id === t.from_character_id && u.to_character_id === t.to_character_id)))
+// Ties that have a twin, one per pair of characters.
+const mergeable = ties => {
+  const seen = new Set()
+  return ties.filter(t => {
+    const k = [t.from_character_id, t.to_character_id].sort().join('|')
+    if (seen.has(k) || !twinOf(ties, t)) return false
+    seen.add(k); return true
+  })
+}
+const tieWords = (A, B, both) => both ? first(A) + ' and ' + first(B) + ' are…' : first(A) + ' is…'
+
+function Direction({ both, onChange, platform }) {
+  const size = platform === 'mobile' ? 'touch' : 'md'
+  return (
+    <div>
+      <Eyebrow style={{ marginBottom: 8 }}>Direction</Eyebrow>
+      <div role="group" aria-label="Direction" style={chipRow}>
+        <Chip size={size} selected={!both} onClick={() => onChange(false)}>One way {'→'}</Chip>
+        <Chip size={size} selected={both} onClick={() => onChange(true)}>Both ways {'↔'}</Chip>
+      </div>
+    </div>
+  )
+}
+
+// Offered while a tie has a twin: merge the two into one two-way tie, keeping one set of words.
+function MergeOffer({ twin, byId, mine, platform, onMerge }) {
+  const m = platform === 'mobile'
+  const theirs = (twin.label || '').trim()
+  const options = [...new Set([(mine || '').trim(), theirs].filter(Boolean))]
+  const [pick, setPick] = useState('')
+  const chosen = options.includes(pick) ? pick : options[0] || ''
+  const X = byId[twin.from_character_id], Y = byId[twin.to_character_id]
+  if (!X || !Y) return null
+  return (
+    <Panel platform={platform} style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+      <div style={{ fontSize: 14, lineHeight: 1.5 }}>
+        {first(X)} {twin.both_ways ? '↔' : '→'} {first(Y)} is drawn too{theirs ? <>: {'“'}{theirs}{'”'}</> : ''}. Merge the two into one two-way tie?
+      </div>
+      {options.length > 1 && (
+        <div>
+          <Eyebrow style={{ marginBottom: 8 }}>Keep which words?</Eyebrow>
+          <div role="group" aria-label="Words to keep" style={chipRow}>
+            {options.map(o => <Chip key={o} size={m ? 'touch' : 'md'} selected={chosen === o} onClick={() => setPick(o)}>{o}</Chip>)}
+          </div>
+        </div>
+      )}
+      <Button variant="subtle" platform={platform} onClick={() => onMerge(chosen)}>Merge into one tie</Button>
+    </Panel>
+  )
+}
+
+/* ---------------- shared: note cards and tagged highlights ---------------- */
+
+// A character's notes as cards. Before the note-cards migration a character has one plain `notes` text instead.
+const cardsOf = c => Array.isArray(c.note_cards) ? c.note_cards : (c.notes?.trim() ? [{ id: 'legacy', text: c.notes.trim(), page: null }] : [])
+
+function NoteCards({ d, c, platform }) {
+  const m = platform === 'mobile'
+  const toast = useToast()
+  const cards = cardsOf(c)
+  const [edit, setEdit] = useState(null)   // { id (null for a new card), text, page }
+  const [err, setErr] = useState('')
+  const latest = useRef(c); latest.current = c
+  const save = async next => {
+    const e = await d.updateCharacter(c.id, { note_cards: next.map(x => (x.id === 'legacy' ? { ...x, id: uid() } : x)), notes: null })
+    setErr(e || ''); return e
+  }
+  const open = x => { setErr(''); setEdit(x ? { id: x.id, text: x.text, page: x.page ? String(x.page) : '' } : { id: null, text: '', page: '' }) }
+  const cancel = () => { setEdit(null); setErr('') }
+  async function submit() {
+    const text = edit.text.trim()
+    if (!text) return setErr('Write the note first.')
+    const card = { id: edit.id || uid(), text, page: edit.page ? Number(edit.page) : null }
+    const was = edit
+    setEdit(null)   // the card shows at once; the editor comes back with the text if the save fails
+    if (await save(edit.id ? cards.map(x => (x.id === edit.id ? card : x)) : [...cards, card])) setEdit(was)
+  }
+  const move = (i, by) => { const next = cards.slice(); next.splice(i + by, 0, next.splice(i, 1)[0]); save(next) }
+  function remove(x, i) {
+    if (edit?.id === x.id) setEdit(null)
+    save(cards.filter(y => y.id !== x.id))
+    toast('Note removed', { undo: () => { const now = cardsOf(latest.current).slice(); now.splice(Math.min(i, now.length), 0, x); save(now) } })
+  }
+  const editor = (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+      <TextArea size={m ? 'lg' : 'md'} autoFocus value={edit?.text || ''} placeholder="What did you notice?" aria-label={edit?.id ? 'Edit note' : 'New note'}
+        style={{ minHeight: 72, resize: 'vertical' }} onChange={e => { setEdit({ ...edit, text: e.target.value }); setErr('') }}
+        onKeyDown={e => { if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); cancel() } }} />
+      <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+        <TextInput ground={m ? 'page' : 'card'} size={m ? 'lg' : 'md'} inputMode="numeric" placeholder="Page" aria-label="Page (optional)" style={{ width: 88 }}
+          value={edit?.page || ''} onChange={e => setEdit({ ...edit, page: digits(e.target.value) })} />
+        <span style={{ flex: 1 }} />
+        <Button variant="subtle" platform={platform} onClick={cancel}>Cancel</Button>
+        <Button onClick={submit}>{edit?.id ? 'Save' : 'Add note'}</Button>
+      </div>
+      {err && <ErrorText>{err}</ErrorText>}
+    </div>
+  )
+  const card = (x, i) => edit?.id === x.id ? <Panel key={x.id} platform={platform}>{editor}</Panel> : (
+    <Panel key={x.id} platform={platform} style={{ display: 'flex', alignItems: 'flex-start', gap: 2, padding: '6px 4px 6px 14px' }}>
+      <button type="button" onClick={() => open(x)} aria-label={'Edit note: ' + x.text}
+        style={{ flex: 1, minWidth: 0, minHeight: 44, padding: '6px 0', display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 2, textAlign: 'left' }}>
+        <span style={{ fontSize: 14, lineHeight: 1.5, color: 'var(--text-secondary)', whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>{x.text}</span>
+        {x.page ? <span className="app-meta">p. {x.page}</span> : null}
+      </button>
+      {cards.length > 1 && <>
+        <IconButton platform={platform} muted label="Move note up" icon="chevron-down" iconSize={14} onClick={() => move(i, -1)}
+          style={{ transform: 'rotate(180deg)', visibility: i > 0 ? 'visible' : 'hidden' }} />
+        <IconButton platform={platform} muted label="Move note down" icon="chevron-down" iconSize={14} onClick={() => move(i, 1)}
+          style={{ visibility: i < cards.length - 1 ? 'visible' : 'hidden' }} />
+      </>}
+      <IconButton platform={platform} muted label="Delete note" icon="trash-simple" iconSize={16} onClick={() => remove(x, i)} />
+    </Panel>
+  )
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, minHeight: 32 }}>
+        <Eyebrow>Notes{cards.length ? ' (' + cards.length + ')' : ''}</Eyebrow>
+        {!(edit && !edit.id) && <TextButton onClick={() => open(null)}>+ Add note</TextButton>}
+      </div>
+      {cards.length === 0 && !edit && <div style={{ fontSize: 14, color: 'var(--text-muted)' }}>No notes yet. Add the first thing you notice about {first(c)}.</div>}
+      {cards.map(card)}
+      {edit && !edit.id && <Panel platform={platform}>{editor}</Panel>}
+      {err && !edit && <ErrorText>{err}</ErrorText>}
+    </div>
+  )
+}
+
+// Every highlight this character is tagged in, by page. Read-only here: choosing one opens it in Highlights.
+function TaggedHighlights({ d, c, platform, onOpen }) {
+  const m = platform === 'mobile'
+  const list = d.highlights.filter(h => h.mentions?.includes(c.id)).sort((a, b) => a.page - b.page || (a.created_at > b.created_at ? 1 : -1))
+  const labelOf = h => { const l = d.labels.find(x => x.id === h.label_id); return l ? { name: l.name, color: labelColor(l.color_index) } : { name: 'Unlabelled', color: UNLABELLED } }
+  const others = h => h.mentions.filter(id => id !== c.id).map(id => d.characters.find(x => x.id === id)).filter(Boolean).map(first).join(', ')
+  return (
+    <div>
+      <Eyebrow style={{ marginBottom: m ? 4 : 0 }}>Highlights{list.length ? ' (' + list.length + ')' : ''}</Eyebrow>
+      {list.length === 0 && (
+        <div style={{ fontSize: 14, color: 'var(--text-muted)', padding: '8px 0', lineHeight: 1.5 }}>
+          No highlights tag {first(c)} yet. Pick {first(c)} under Who is in it? when you save a highlight and it shows up here.
+        </div>
+      )}
+      {list.map(h => {
+        const lb = labelOf(h), also = others(h)
+        return m ? (
+          <button key={h.id} type="button" onClick={() => onOpen(h.id)} aria-label={'Open the highlight on page ' + h.page + ' in Highlights'}
+            style={{ display: 'flex', flexDirection: 'column', gap: 4, width: '100%', textAlign: 'left', padding: '12px 0', borderBottom: '1px solid var(--divider)' }}>
+            <span style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13 }}>
+              <span style={{ fontWeight: 700 }}>p. {h.page}</span><Dot color={lb.color} /><span style={{ color: 'var(--text-muted)' }}>{lb.name}</span>
+            </span>
+            {h.quote && <span className="app-quote" style={{ fontSize: 15, lineHeight: 1.5, color: 'var(--text-quote)' }}>{'“'}{h.quote}{'”'}</span>}
+            {h.note && <span style={{ fontSize: 14, lineHeight: 1.5, color: 'var(--text-secondary)' }}>{h.note}</span>}
+            {also && <span style={{ fontSize: 12, color: 'var(--palette-blue)' }}>Also: {also}</span>}
+          </button>
+        ) : (
+          <HighlightRow key={h.id} page={h.page} label={lb.name} labelColor={lb.color} quote={h.quote || null} note={h.note || null}
+            mentions={also ? 'Also: ' + also : null} onOpen={() => onOpen(h.id)} />
+        )
+      })}
+      {list.length > 0 && <div className="app-meta" style={{ marginTop: 8 }}>Choose one to open it on the Highlights tab.</div>}
+    </div>
+  )
+}
+
 const near = (ties, sel) => {
   const s = new Set(sel ? [sel] : [])
   if (sel) ties.forEach(t => { if (t.from_character_id === sel) s.add(t.to_character_id); if (t.to_character_id === sel) s.add(t.from_character_id) })
@@ -208,7 +378,7 @@ function TypesManager({ d, platform, hidden, setHidden, bookId }) {
 
 /* ---------------- desktop ---------------- */
 
-function DeskGraph({ d, header }) {
+function DeskGraph({ d, header, onOpenHighlight }) {
   const toast = useToast()
   const { byId, typesById } = useGraphBasics(d)
   const [sel, setSel] = useState(null), [selTie, setSelTie] = useState(null)
@@ -280,6 +450,8 @@ function DeskGraph({ d, header }) {
   const hasUntyped = d.ties.some(t => !t.tie_type_id || !typesById[t.tie_type_id])
   const typeChips = d.tieTypes.map(t => ({ id: t.id, name: t.name, color: tieColor(t.color_index) }))
     .concat(hasUntyped ? [{ id: '', name: 'Untyped', color: TIE_UNTYPED.color }] : [])
+  const pairs = mergeable(d.ties)
+  const reviewPair = () => { const t = pairs[0]; closePop(); setDrawer(null); setSel(t.from_character_id); setSelTie(t.id); setPop({ mode: 'tie', isNew: false }) }
   const popEdge = tie && edges.find(e => e.id === tie.id)
   const tieOn = pop?.mode === 'tie' && !!tie, typesOn = pop?.mode === 'types' || (pop?.mode === 'tie' && !tie)
   const POPW = 380
@@ -304,6 +476,12 @@ function DeskGraph({ d, header }) {
             return <Chip key={t.id || 'untyped'} selected={on} dot={t.color} onClick={() => setHidden(h => on ? [...h, t.id] : h.filter(x => x !== t.id))}>{t.name}</Chip>
           })}
         </div>
+        {pairs.length > 0 && (
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, alignItems: 'center', marginBottom: 12 }}>
+            <span className="app-meta">{pairs.length === 1 ? 'Two characters have' : pairs.length + ' pairs of characters have'} a tie drawn each way. You can merge {pairs.length === 1 ? 'them' : 'each pair'} into one two-way tie.</span>
+            <TextButton onClick={reviewPair}>{pairs.length === 1 ? 'Review' : 'Review the first'}</TextButton>
+          </div>
+        )}
         <div ref={cv.ref} {...cv.handlers} style={{ touchAction: 'none' }}>
         <GraphCanvas framed
           style={{ backgroundSize: 22 * view.k + 'px ' + 22 * view.k + 'px', backgroundPosition: view.tx + 'px ' + view.ty + 'px', cursor: draw ? 'crosshair' : 'grab' }}>
@@ -322,7 +500,7 @@ function DeskGraph({ d, header }) {
               </>}
             </svg>
             {edges.map(e => (
-              <TieLabel key={'t' + e.id} x={e.mx} y={e.my} color={e.color} opacity={e.op} aria-label={'Tie from ' + e.fromName + ' to ' + e.toName + ': ' + e.label + '. Edit'}
+              <TieLabel key={'t' + e.id} x={e.mx} y={e.my} color={e.color} opacity={e.op} aria-label={(e.both ? 'Two-way tie between ' + e.fromName + ' and ' : 'Tie from ' + e.fromName + ' to ') + e.toName + ': ' + e.label + '. Edit'}
                 onClick={() => { closePop(); setSelTie(e.id); setDrawer(null); setPop({ mode: 'tie', isNew: false }) }}>{e.label}</TieLabel>
             ))}
             {d.characters.map((c, i) => (
@@ -341,7 +519,7 @@ function DeskGraph({ d, header }) {
                 <span style={{ flex: 1 }} />
                 <IconButton label="Close" onClick={closePop} style={{ width: 40, height: 40 }} />
               </div>
-              {tieOn && <TiePanel key={tie.id} d={d} tie={tie} byId={byId} isNew={pop.isNew} onPickType={setLtype}
+              {tieOn && <TiePanel key={tie.id} d={d} tie={tie} byId={byId} isNew={pop.isNew} onPickType={setLtype} onMerged={() => setPop(p => p && { ...p, isNew: false })}
                 onDone={() => setPop(null)} onCancel={closePop} onRemove={() => { setPop(null); setSelTie(null); d.removeTie(tie) }} />}
               {typesOn && (
                 <div style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -368,7 +546,7 @@ function DeskGraph({ d, header }) {
       {drawer === 'add' && <AddCharDrawer d={d} onClose={() => setDrawer(null)}
         at={() => ({ x: (size.W / 2 - view.tx) / view.k + (Math.random() - 0.5) * 80, y: (size.H / 2 - view.ty) / view.k + (Math.random() - 0.5) * 80 })}
         onAdded={id => { setSel(id); setSelTie(null); setDrawer('char') }} />}
-      {drawer === 'char' && selC && <CharDrawer key={selC.id} d={d} c={selC} byId={byId} typesById={typesById} onClose={() => setDrawer(null)}
+      {drawer === 'char' && selC && <CharDrawer key={selC.id} d={d} c={selC} byId={byId} typesById={typesById} onClose={() => setDrawer(null)} onOpenHighlight={onOpenHighlight}
         onOpenTie={id => { setDrawer(null); setSelTie(id); setPop({ mode: 'tie', isNew: false }) }}
         onJump={id => { setSel(id); setSelTie(null) }} onTie={to => newTie(selC.id, to)}
         onRemove={() => { setDrawer(null); setSel(null); d.removeCharacter(selC) }} />}
@@ -376,21 +554,24 @@ function DeskGraph({ d, header }) {
   )
 }
 
-function TiePanel({ d, tie, byId, isNew, onPickType, onDone, onCancel, onRemove }) {
+function TiePanel({ d, tie, byId, isNew, onPickType, onDone, onCancel, onRemove, onMerged }) {
   const A = byId[tie.from_character_id], B = byId[tie.to_character_id]
   const [label, setLabel, commit] = useSaved(tie.label, v => d.updateTie(tie.id, { label: v.trim() }))
   const used = [...new Set(d.ties.filter(t => t.id !== tie.id && t.label).map(t => t.label))].slice(0, 8)
   const types = d.tieTypes.map(t => ({ id: t.id, name: t.name, color: tieColor(t.color_index) })).concat([{ id: null, name: 'Untyped', color: TIE_UNTYPED.color }])
   const done = () => { commit(); onDone() }
+  const both = !!tie.both_ways, twin = twinOf(d.ties, tie)
   if (!A || !B) return null
   return (
     <div style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 14 }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-        <div style={{ fontSize: 18, fontWeight: 700, letterSpacing: '-0.01em' }}>{first(A)} {'→'} {first(B)}</div>
-        <Button variant="subtle" size="sm" onClick={() => d.updateTie(tie.id, { from_character_id: tie.to_character_id, to_character_id: tie.from_character_id })}>Swap</Button>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, minHeight: 36 }}>
+        <div style={{ fontSize: 18, fontWeight: 700, letterSpacing: '-0.01em' }}>{first(A)} {both ? '↔' : '→'} {first(B)}</div>
+        {!both && <Button variant="subtle" size="sm" onClick={() => d.updateTie(tie.id, { from_character_id: tie.to_character_id, to_character_id: tie.from_character_id })}>Swap</Button>}
       </div>
-      <Field label={first(A) + ' is…'}>
-        <TextInput value={label} maxLength={80} placeholder="For example, mentor of" autoFocus onChange={e => setLabel(e.target.value)} onBlur={commit}
+      <Direction both={both} onChange={v => d.updateTie(tie.id, { both_ways: v })} />
+      {twin && <MergeOffer key={twin.id} twin={twin} byId={byId} mine={label} platform="desktop" onMerge={l => { d.mergeTies(tie, twin, l); setLabel(l); onMerged() }} />}
+      <Field label={tieWords(A, B, both)}>
+        <TextInput value={label} maxLength={80} placeholder={both ? 'For example, rivals' : 'For example, mentor of'} autoFocus onChange={e => setLabel(e.target.value)} onBlur={commit}
           onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); done() } else if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); onCancel() } }} />
       </Field>
       {used.length > 0 && (
@@ -405,7 +586,6 @@ function TiePanel({ d, tie, byId, isNew, onPickType, onDone, onCancel, onRemove 
             onClick={() => { d.updateTie(tie.id, { tie_type_id: t.id }); onPickType(t.id) }}>{t.name}</Chip>)}
         </div>
       </div>
-      <div style={{ fontSize: 12, color: 'var(--text-muted)', lineHeight: 1.5 }}>The arrow points one way. To show it both ways, draw a second arrow back.</div>
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
         <Button onClick={done}>Done</Button>
         {isNew ? <Button variant="subtle" onClick={onCancel}>Cancel</Button> : <Button variant="subtle" tone="danger" onClick={onRemove}>Remove tie</Button>}
@@ -436,18 +616,18 @@ function AddCharDrawer({ d, at, onClose, onAdded }) {
   )
 }
 
-function CharDrawer({ d, c, byId, typesById, onClose, onOpenTie, onJump, onTie, onRemove }) {
+function CharDrawer({ d, c, byId, typesById, onClose, onOpenTie, onJump, onTie, onRemove, onOpenHighlight }) {
   const save = k => v => d.updateCharacter(c.id, { [k]: v })
   const [nm, setNm, commitName] = useSaved(c.name, v => { const t = v.trim(); if (t) d.updateCharacter(c.id, { name: t }); else setNm(c.name) })
   const [job, setJob, commitJob] = useSaved(c.profession, v => save('profession')(v.trim() || null))
   const [pg, setPg, commitPg] = useSaved(c.first_page ? String(c.first_page) : '', v => save('first_page')(v ? Number(v) : null))
-  const [notes, setNotes, commitNotes] = useSaved(c.notes, v => save('notes')(v.trim() || null))
   const [aka, setAka] = useState(''), [to, setTo] = useState(''), [renaming, setRenaming] = useState(false)
   const aliases = c.aliases || []
   const addAka = e => { e.preventDefault(); const v = aka.trim(); if (v && !aliases.includes(v)) d.updateCharacter(c.id, { aliases: [...aliases, v] }); setAka('') }
   const rels = d.ties.filter(t => t.from_character_id === c.id || t.to_character_id === c.id).map(t => {
     const out = t.from_character_id === c.id, o = byId[out ? t.to_character_id : t.from_character_id], ts = typeStyle(typesById, t.tie_type_id), lb = t.label || 'untitled tie'
-    return o && { t, o, ts, text: out ? '→ ' + first(c) + ' ' + lb + ' ' + first(o) : '← ' + first(o) + ' ' + lb + ' ' + first(c) }
+    if (!o) return null
+    return { t, o, ts, text: t.both_ways ? '↔ ' + first(c) + ' and ' + first(o) + ': ' + lb : out ? '→ ' + first(c) + ' ' + lb + ' ' + first(o) : '← ' + first(o) + ' ' + lb + ' ' + first(c) }
   }).filter(Boolean)
   return (
     <FormOverlay title="Character" onClose={onClose} focus={false} label={c.name}>
@@ -476,9 +656,8 @@ function CharDrawer({ d, c, byId, typesById, onClose, onOpenTie, onJump, onTie, 
         <Field label="Role or job" style={{ flex: 1 }}><TextInput value={job} onChange={e => setJob(e.target.value)} onBlur={commitJob} /></Field>
         <Field label="First seen, page"><TextInput pageNumber inputMode="numeric" value={pg} onChange={e => setPg(digits(e.target.value))} onBlur={commitPg} /></Field>
       </div>
-      <Field label="Notes">
-        <TextInput as="textarea" rows={3} value={notes} onChange={e => setNotes(e.target.value)} onBlur={commitNotes} style={{ padding: '10px 14px', lineHeight: 1.5, resize: 'vertical' }} />
-      </Field>
+      <NoteCards d={d} c={c} platform="desktop" />
+      <TaggedHighlights d={d} c={c} platform="desktop" onOpen={onOpenHighlight} />
       <div>
         <Eyebrow style={{ marginBottom: 6 }}>Ties</Eyebrow>
         {rels.length === 0 && <div style={{ fontSize: 14, color: 'var(--text-muted)', padding: '8px 0' }}>No ties yet. Drag from the green handle on the graph, or add one below.</div>}
@@ -511,7 +690,7 @@ function CharDrawer({ d, c, byId, typesById, onClose, onOpenTie, onJump, onTie, 
 
 /* ---------------- phone ---------------- */
 
-function PhoneGraph({ d }) {
+function PhoneGraph({ d, onOpenHighlight }) {
   const toast = useToast()
   const { byId, typesById } = useGraphBasics(d)
   const [sel, setSel] = useState(null), [link, setLink] = useState(false)
@@ -533,7 +712,7 @@ function PhoneGraph({ d }) {
         if (link && sel) {
           if (s.id === sel) return
           setLink(false)
-          return setSheet({ kind: 'tie', draft: { a: sel, b: s.id, type: d.tieTypes[0]?.id || null, label: '' } })
+          return setSheet({ kind: 'tie', draft: { a: sel, b: s.id, type: d.tieTypes[0]?.id || null, label: '', both: false } })
         }
         setSel(s.id); setSheet(null)
       } else if (s.type === 'bg' && !link) setSel(null)
@@ -558,7 +737,7 @@ function PhoneGraph({ d }) {
     const a = byId[t.from_character_id], b = byId[t.to_character_id]
     if (!a || !b) return null
     const ts = typeStyle(typesById, t.tie_type_id)
-    return { id: t.id, ...phoneEdge(a, b), color: ts.color, dash: ts.dash, label: t.label || ts.name, op: !sel || t.from_character_id === sel || t.to_character_id === sel ? 1 : 0.15 }
+    return { id: t.id, ...phoneEdge(a, b, !!t.both_ways), color: ts.color, dash: ts.dash, label: t.label || ts.name, op: !sel || t.from_character_id === sel || t.to_character_id === sel ? 1 : 0.15 }
   }).filter(Boolean)
   const arrange = () => {
     const n = d.characters.length, R = Math.max(110, n * 34), pos = {}
@@ -567,7 +746,7 @@ function PhoneGraph({ d }) {
     cv.fit(d.characters.map(c => ({ ...c, ...pos[c.id] })))
   }
   const center = () => ({ x: (size.W / 2 - view.tx) / view.k + (Math.random() - 0.5) * 60, y: (size.H / 2 - view.ty) / view.k + (Math.random() - 0.5) * 60 })
-  const editForm = c => ({ id: c?.id || '', name: c?.name || '', job: c?.profession || '', aka: (c?.aliases || []).join(', '), page: c?.first_page ? String(c.first_page) : '', notes: c?.notes || '' })
+  const editForm = c => ({ id: c?.id || '', name: c?.name || '', job: c?.profession || '', aka: (c?.aliases || []).join(', '), page: c?.first_page ? String(c.first_page) : '' })
 
   return (
     <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column' }}>
@@ -581,6 +760,7 @@ function PhoneGraph({ d }) {
               <g key={e.id} opacity={e.op}>
                 <line x1={e.x1} y1={e.y1} x2={e.x2} y2={e.y2} stroke={e.color} strokeWidth="2" strokeDasharray={e.dash} />
                 <polygon points={e.head} fill={e.color} />
+                {e.tail && <polygon points={e.tail} fill={e.color} />}
                 <text x={e.lx} y={e.ly} textAnchor="middle" fontSize="11" fontWeight="700" fill={e.color} stroke="var(--surface)" strokeWidth="4" paintOrder="stroke"
                   style={{ fontFamily: 'var(--font-sans)' }}>{e.label}</text>
               </g>
@@ -589,7 +769,7 @@ function PhoneGraph({ d }) {
           {d.characters.map(c => (
             <NodePill key={c.id} data-node={c.id} x={c.x - PHONE.w / 2} y={c.y - PHONE.h / 2} aria-label={c.name}
               ring={c.id === sel ? 'var(--accent)' : 'var(--border-strong)'} opacity={!sel || nb.has(c.id) || picking ? 1 : 0.3}
-              onClick={e => { if (e.detail === 0) { if (picking && c.id !== sel) { setLink(false); setSheet({ kind: 'tie', draft: { a: sel, b: c.id, type: d.tieTypes[0]?.id || null, label: '' } }) } else setSel(c.id) } }}>
+              onClick={e => { if (e.detail === 0) { if (picking && c.id !== sel) { setLink(false); setSheet({ kind: 'tie', draft: { a: sel, b: c.id, type: d.tieTypes[0]?.id || null, label: '', both: false } }) } else setSel(c.id) } }}>
               {c.name}
             </NodePill>
           ))}
@@ -611,8 +791,8 @@ function PhoneGraph({ d }) {
       </GraphCanvas>
       </div>
 
-      {selC && !link && !sheet && <CharSheet d={d} c={selC} byId={byId} typesById={typesById} onClose={() => setSel(null)}
-        onTie={t => setSheet({ kind: 'tie', draft: { id: t.id, a: t.from_character_id, b: t.to_character_id, type: t.tie_type_id, label: t.label || '' } })}
+      {selC && !link && !sheet && <CharSheet key={selC.id} d={d} c={selC} byId={byId} typesById={typesById} onClose={() => setSel(null)} onOpenHighlight={onOpenHighlight}
+        onTie={t => setSheet({ kind: 'tie', draft: { id: t.id, a: t.from_character_id, b: t.to_character_id, type: t.tie_type_id, label: t.label || '', both: !!t.both_ways } })}
         onLink={() => setLink(true)} onEdit={() => setSheet({ kind: 'edit', form: editForm(selC) })}
         onRemove={() => { setSel(null); d.removeCharacter(selC) }} />}
       {sheet?.kind === 'tie' && <TieSheet d={d} draft={sheet.draft} byId={byId} onClose={() => setSheet(null)} toast={toast} />}
@@ -627,13 +807,13 @@ function PhoneGraph({ d }) {
   )
 }
 
-function CharSheet({ d, c, byId, typesById, onClose, onTie, onLink, onEdit, onRemove }) {
+function CharSheet({ d, c, byId, typesById, onClose, onTie, onLink, onEdit, onRemove, onOpenHighlight }) {
   const rels = d.ties.filter(t => t.from_character_id === c.id || t.to_character_id === c.id).map(t => {
     const out = t.from_character_id === c.id, o = byId[out ? t.to_character_id : t.from_character_id], ts = typeStyle(typesById, t.tie_type_id)
-    return o && { t, color: ts.color, text: (out ? c.name + ' → ' + o.name : o.name + ' → ' + c.name) + ' · ' + ts.name }
+    return o && { t, color: ts.color, text: (t.both_ways ? c.name + ' ↔ ' + o.name : out ? c.name + ' → ' + o.name : o.name + ' → ' + c.name) + ' · ' + ts.name }
   }).filter(Boolean)
   return (
-    <FormOverlay kind="sheet" label={c.name} onClose={onClose} focus={false} head={
+    <FormOverlay kind="sheet" tall label={c.name} onClose={onClose} focus={false} head={
       <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div className="mobile-sheet-name" style={{ letterSpacing: '-0.01em' }}>{c.name}</div>
@@ -642,7 +822,8 @@ function CharSheet({ d, c, byId, typesById, onClose, onTie, onLink, onEdit, onRe
         <IconButton platform="mobile" label="Close" onClick={onClose} />
       </div>}>
       {c.aliases?.length > 0 && <div style={{ fontSize: 13, color: 'var(--text-secondary)' }}>Also known as {c.aliases.join(', ')}</div>}
-      {c.notes && <div style={{ fontSize: 14, lineHeight: 1.5, color: 'var(--text-secondary)', whiteSpace: 'pre-wrap' }}>{c.notes}</div>}
+      <NoteCards d={d} c={c} platform="mobile" />
+      <Eyebrow style={{ marginTop: 4 }}>Ties</Eyebrow>
       {rels.length === 0 && <div style={{ fontSize: 14, color: 'var(--text-muted)' }}>No ties yet. Use Link to{'…'} to connect this character.</div>}
       {rels.map(r => (
         <button key={r.t.id} type="button" onClick={() => onTie(r.t)} aria-label={'Edit tie: ' + r.text}
@@ -655,6 +836,7 @@ function CharSheet({ d, c, byId, typesById, onClose, onTie, onLink, onEdit, onRe
         <Button variant="subtle" platform="mobile" onClick={onEdit}>Edit</Button>
         <Button variant="subtle" platform="mobile" tone="danger" onClick={onRemove}>Remove</Button>
       </div>
+      <TaggedHighlights d={d} c={c} platform="mobile" onOpen={onOpenHighlight} />
     </FormOverlay>
   )
 }
@@ -664,10 +846,17 @@ function TieSheet({ d, draft, byId, onClose, toast }) {
   const A = byId[t.a], B = byId[t.b]
   const types = d.tieTypes.map(x => ({ id: x.id, name: x.name, color: tieColor(x.color_index) })).concat([{ id: null, name: 'Untyped', color: TIE_UNTYPED.color }])
   async function save() {
-    const body = { from_character_id: t.a, to_character_id: t.b, tie_type_id: t.type || null, label: t.label.trim() }
+    const body = { from_character_id: t.a, to_character_id: t.b, tie_type_id: t.type || null, label: t.label.trim(), both_ways: !!t.both }
     if (t.id) { const e = await d.updateTie(t.id, body); if (e) return setErr(e); toast('Tie updated') }
-    else { const r = await d.addTie(t.a, t.b, t.type, t.label.trim()); if (r.err) return setErr(r.err); toast('Tie saved') }
+    else { const r = await d.addTie(t.a, t.b, t.type, t.label.trim(), !!t.both); if (r.err) return setErr(r.err); toast('Tie saved') }
     onClose()
+  }
+  // a saved tie with one drawn back the other way can be merged with it
+  const saved = t.id && d.ties.find(x => x.id === t.id)
+  const twin = saved && twinOf(d.ties, { ...saved, from_character_id: t.a, to_character_id: t.b, both_ways: !!t.both })
+  function merge(label) {
+    if ((saved.tie_type_id || null) !== (t.type || null)) d.updateTie(t.id, { tie_type_id: t.type || null })
+    d.mergeTies(saved, twin, label); onClose()
   }
   if (!A || !B) return null
   return (
@@ -675,18 +864,20 @@ function TieSheet({ d, draft, byId, onClose, toast }) {
       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{t.id ? 'Edit tie' : 'New tie'}</div>
-          <div style={{ fontSize: 17, fontWeight: 800 }}>{A.name} {'→'} {B.name}</div>
+          <div style={{ fontSize: 17, fontWeight: 800 }}>{A.name} {t.both ? '↔' : '→'} {B.name}</div>
         </div>
-        {t.id && <Button variant="subtle" platform="mobile" onClick={() => setT({ ...t, a: t.b, b: t.a })} aria-label="Swap direction of the tie">Swap</Button>}
+        {t.id && !t.both && <Button variant="subtle" platform="mobile" onClick={() => setT({ ...t, a: t.b, b: t.a })} aria-label="Swap direction of the tie">Swap</Button>}
         <IconButton platform="mobile" label="Close" onClick={onClose} />
       </div>}>
       <Eyebrow>Tie type</Eyebrow>
       <div role="group" aria-label="Tie type" style={chipRow}>
         {types.map(x => <Chip key={x.id || 'untyped'} size="touch" selected={(t.type || null) === x.id} dot={x.color} onClick={() => setT({ ...t, type: x.id })}>{x.name}</Chip>)}
       </div>
-      <Field platform="mobile" label="Note (optional)">
-        <TextInput ground="page" size="lg" value={t.label} maxLength={80} onChange={e => setT({ ...t, label: e.target.value })} placeholder="e.g. owes a debt" />
+      <Direction platform="mobile" both={!!t.both} onChange={v => setT({ ...t, both: v })} />
+      <Field platform="mobile" label={tieWords(A, B, t.both) + ' (optional)'}>
+        <TextInput ground="page" size="lg" value={t.label} maxLength={80} onChange={e => setT({ ...t, label: e.target.value })} placeholder={t.both ? 'For example, rivals' : 'For example, owes a debt to'} />
       </Field>
+      {twin && <MergeOffer key={twin.id} twin={twin} byId={byId} mine={t.label} platform="mobile" onMerge={merge} />}
       {err && <ErrorText>{err}</ErrorText>}
       <div style={{ display: 'flex', gap: 8 }}>
         <Button style={{ flex: 1 }} onClick={save}>Save tie</Button>
@@ -704,7 +895,7 @@ function EditCharSheet({ d, form, at, toast, onClose, onAdded }) {
     const name = f.name.trim()
     if (!name) return setErr('Add a name for this character.')
     if (d.characters.some(c => c.id !== f.id && c.name.toLowerCase() === name.toLowerCase())) return setErr('You already have a character called ' + name + '.')
-    const body = { name, profession: f.job.trim() || null, aliases: f.aka.split(',').map(x => x.trim()).filter(Boolean), first_page: f.page ? Number(f.page) : null, notes: f.notes.trim() || null }
+    const body = { name, profession: f.job.trim() || null, aliases: f.aka.split(',').map(x => x.trim()).filter(Boolean), first_page: f.page ? Number(f.page) : null }
     if (f.id) { const e = await d.updateCharacter(f.id, body); if (e) return setErr(e); toast('Details saved'); onClose() }
     else { const r = await d.addCharacter(body, at()); if (r.err) return setErr(r.err); toast(name + ' added'); onClose(); onAdded(r.id) }
   }
@@ -717,7 +908,6 @@ function EditCharSheet({ d, form, at, toast, onClose, onAdded }) {
         <Field platform="mobile" label="First page" style={{ width: 96, flex: 'none' }}><TextInput ground="page" size="lg" inputMode="numeric" placeholder="3" value={f.page} onChange={e => put({ page: digits(e.target.value) })} /></Field>
       </div>
       <Field platform="mobile" label="Also known as (separate with commas)"><TextInput ground="page" size="lg" value={f.aka} placeholder="Ellie, The Cartographer" onChange={e => put({ aka: e.target.value })} /></Field>
-      <Field platform="mobile" label="Notes"><TextArea size="lg" style={{ minHeight: 72 }} value={f.notes} placeholder="What do you know about them so far?" onChange={e => put({ notes: e.target.value })} /></Field>
       <div style={{ display: 'flex', gap: 8 }}>
         <Button style={{ flex: 1 }} onClick={save}>Save</Button>
         <Button variant="subtle" platform="mobile" onClick={onClose}>Cancel</Button>

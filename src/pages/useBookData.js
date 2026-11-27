@@ -162,8 +162,8 @@ export function useBookData(bookId) {
     },
 
     /* ties */
-    async addTie(from, to, tie_type_id, label = '') {
-      const row = { id: uid(), book_id: bookId, from_character_id: from, to_character_id: to, tie_type_id: tie_type_id || null, label }
+    async addTie(from, to, tie_type_id, label = '', both_ways = false) {
+      const row = { id: uid(), book_id: bookId, from_character_id: from, to_character_id: to, tie_type_id: tie_type_id || null, label, both_ways }
       set(x => ({ ties: [...x.ties, row] }))
       const err = await run(supabase.from('ties').insert(row))
       if (err) set(x => ({ ties: x.ties.filter(t => t.id !== row.id) }))
@@ -185,6 +185,18 @@ export function useBookData(bookId) {
         () => set(x => ({ ties: x.ties.filter(y => y.id !== t.id) })),
         () => set(x => ({ ties: [...x.ties, t] })),
         () => run(supabase.from('ties').delete().eq('id', t.id)))
+    },
+    // A→B and B→A become one two-way tie: keep turns both ways with the chosen words, drop goes (Undo restores both).
+    mergeTies(keep, drop, label) {
+      deferDelete('Merged into one two-way tie',
+        () => set(x => ({ ties: x.ties.filter(t => t.id !== drop.id).map(t => t.id === keep.id ? { ...t, both_ways: true, label } : t) })),
+        () => set(x => ({ ties: [...x.ties.filter(t => t.id !== keep.id && t.id !== drop.id), keep, drop] })),
+        async () => {
+          // send what the tie is now, in case it was edited during the Undo window
+          const cur = latest.current.ties.find(t => t.id === keep.id) || { both_ways: true, label }
+          return (await run(supabase.from('ties').update({ both_ways: cur.both_ways, label: cur.label }).eq('id', keep.id)))
+            || run(supabase.from('ties').delete().eq('id', drop.id))
+        })
     },
 
     /* tie types */

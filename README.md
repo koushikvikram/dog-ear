@@ -124,6 +124,8 @@ npx supabase db push                                  # applies supabase/migrati
 
 **Already set up before the design-system update?** Apply just `supabase/migrations/20261122000000_design_system.sql` (paste it into the SQL editor, or `npx supabase db push`). It lets new books store a cover colour, gives your existing books one, and indexes the dictionary for suggestions as you type.
 
+**Already set up before two-way ties and note cards?** Apply `supabase/migrations/20261126000000_two_way_ties_note_cards.sql` the same way. It lets a tie point both ways and turns each character's notes into a list of cards (an existing note becomes the first card).
+
 Check it worked: **Table Editor** should list `books`, `characters`, `ties`, `tie_types`, `words`, `highlights`, `highlight_labels`, `highlight_characters`, `dictionary`, `profiles`, `invite_requests`, each with an "RLS enabled" badge. If any table shows RLS disabled, stop and fix that before going further.
 
 ### 2.3 Turn sign-ups off (this is what makes it invite-only)
