@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { supabase } from '../supabase.js'
 import {
   ActionBanner, Button, CanvasToolbar, CharacterNode, Chip, Dot, EmptyState, ErrorText, Eyebrow, Fab, Field, GraphCanvas,
-  GraphControls, HighlightRow, HintBar, Icon, IconButton, NodePill, Panel, Popover, Select, SelectionBar, SwatchRow, Tab, TextArea,
+  GraphControls, HighlightRow, HintBar, Icon, IconButton, NodePill, Panel, Popover, SectionHeader, Select, SelectionBar, SwatchRow, Tab, TextArea,
   TextButton, TextInput, TieLabel,
 } from '../design-system/index.js'
 import { firstName as first, uid, useToast } from '../util.jsx'
@@ -255,10 +255,7 @@ function NoteCards({ d, c, platform }) {
   )
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, minHeight: 32 }}>
-        <Eyebrow>Notes{cards.length ? ' (' + cards.length + ')' : ''}</Eyebrow>
-        {!(edit && !edit.id) && <TextButton onClick={() => open(null)}>+ Add note</TextButton>}
-      </div>
+      <SectionHeader title="Notes" count={cards.length} actionLabel={edit && !edit.id ? undefined : '+ Add note'} onAction={() => open(null)} />
       {cards.length === 0 && !edit && <div style={{ fontSize: 14, color: 'var(--text-muted)' }}>No notes yet. Add the first thing you notice about {first(c)}.</div>}
       {cards.length > 1 && !edit && <div className="app-meta" style={{ marginTop: -4 }}>{m ? 'Press and hold a card, then drag it to reorder.' : 'Drag a card to reorder.'}</div>}
       <div ref={drag.listRef} style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>{cards.map(card)}</div>
@@ -344,7 +341,7 @@ function TaggedHighlights({ d, c, platform, onOpen }) {
   const others = h => h.mentions.filter(id => id !== c.id).map(id => d.characters.find(x => x.id === id)).filter(Boolean).map(first).join(', ')
   return (
     <div>
-      <Eyebrow style={{ marginBottom: m ? 4 : 0 }}>Highlights{list.length ? ' (' + list.length + ')' : ''}</Eyebrow>
+      <SectionHeader title="Highlights" count={list.length} />
       {list.length === 0 && (
         <div style={{ fontSize: 14, color: 'var(--text-muted)', padding: '8px 0', lineHeight: 1.5 }}>
           No highlights tag {first(c)} yet. Pick {first(c)} under Who is in it? when you save a highlight and it shows up here.
@@ -732,10 +729,7 @@ function CharDrawer({ d, c, byId, typesById, onClose, onOpenTie, onJump, onTie, 
       <NoteCards d={d} c={c} platform="desktop" />
       <TaggedHighlights d={d} c={c} platform="desktop" onOpen={onOpenHighlight} />
       <div>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, minHeight: 32 }}>
-          <Eyebrow>Ties{rels.length ? ' (' + rels.length + ')' : ''}</Eyebrow>
-          {canTie && !adding && <TextButton onClick={() => setAdding(true)} aria-expanded={false}>+ Add tie</TextButton>}
-        </div>
+        <SectionHeader title="Ties" count={rels.length} actionLabel={canTie && !adding ? '+ Add tie' : undefined} onAction={() => setAdding(true)} />
         {rels.length === 0 && !adding && (
           <div style={{ fontSize: 14, color: 'var(--text-muted)', padding: '8px 0' }}>
             No ties yet. {canTie ? 'Use + Add tie, or drag from the green handle on the graph.' : 'Add another character to tie ' + first(c) + ' to.'}
@@ -908,10 +902,7 @@ function CharSheet({ d, c, byId, typesById, onClose, onTie, onLink, onEdit, onRe
       </div>}>
       {c.aliases?.length > 0 && <div style={{ fontSize: 13, color: 'var(--text-secondary)' }}>Also known as {c.aliases.join(', ')}</div>}
       <NoteCards d={d} c={c} platform="mobile" />
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, minHeight: 32, marginTop: 4 }}>
-        <Eyebrow>Ties{rels.length ? ' (' + rels.length + ')' : ''}</Eyebrow>
-        {d.characters.length > 1 && <TextButton onClick={onLink}>+ Add tie</TextButton>}
-      </div>
+      <SectionHeader title="Ties" count={rels.length} actionLabel={d.characters.length > 1 ? '+ Add tie' : undefined} onAction={onLink} style={{ marginTop: 4 }} />
       {rels.length === 0 && <div style={{ fontSize: 14, color: 'var(--text-muted)' }}>
         No ties yet. {d.characters.length > 1 ? 'Use + Add tie, then tap who ' + first(c) + ' is tied to.' : 'Add another character to tie ' + first(c) + ' to.'}
       </div>}

@@ -253,6 +253,19 @@ export interface EyebrowProps extends React.HTMLAttributes<HTMLElement> {
 }
 export declare function Eyebrow(props: EyebrowProps): React.ReactElement;
 
+/** The heading row of a section in a drawer or sheet (Notes, Ties, Highlights): an eyebrow title with an optional count, and an optional accent text action on the right ("+ Add note", "+ Add tie"). */
+export interface SectionHeaderProps extends React.HTMLAttributes<HTMLElement> {
+  title: React.ReactNode;
+  /** Shown as "Title (3)"; 0 or undefined shows the title alone. */
+  count?: number;
+  /** Label of the TextButton on the right, for example "+ Add tie". Leave out to show no action. */
+  actionLabel?: string;
+  onAction?: (e?: any) => void;
+  /** Any node to put on the right instead of the TextButton. */
+  action?: React.ReactNode;
+}
+export declare function SectionHeader(props: SectionHeaderProps): React.ReactElement;
+
 /** Muted 15px/1.6 paragraph for empty lists and no-match results. */
 export interface EmptyStateProps extends React.HTMLAttributes<HTMLElement> {
   children: React.ReactNode;
@@ -571,4 +584,4 @@ export declare function GraphControls(props: GraphControlsProps): React.ReactEle
 
 export declare const ICON_NAMES: IconName[];
 
-declare global { interface Window { DogEar: { AppShell: typeof AppShell; Container: typeof Container; ScrollArea: typeof ScrollArea; AppBody: typeof AppBody; Wordmark: typeof Wordmark; Icon: typeof Icon; Button: typeof Button; IconButton: typeof IconButton; TextButton: typeof TextButton; MicButton: typeof MicButton; MicPill: typeof MicPill; Fab: typeof Fab; SegmentedControl: typeof SegmentedControl; Tabs: typeof Tabs; Tab: typeof Tab; BottomTabBar: typeof BottomTabBar; AppHeader: typeof AppHeader; AccountButton: typeof AccountButton; Menu: typeof Menu; MenuItem: typeof MenuItem; Chip: typeof Chip; Badge: typeof Badge; Dot: typeof Dot; Field: typeof Field; TextInput: typeof TextInput; Select: typeof Select; TextArea: typeof TextArea; SearchField: typeof SearchField; Honeypot: typeof Honeypot; ErrorText: typeof ErrorText; Eyebrow: typeof Eyebrow; EmptyState: typeof EmptyState; AuthCard: typeof AuthCard; Panel: typeof Panel; FeatureTile: typeof FeatureTile; SuccessDisc: typeof SuccessDisc; BookCover: typeof BookCover; BookCard: typeof BookCard; AddBookCard: typeof AddBookCard; RequestRow: typeof RequestRow; WordEntry: typeof WordEntry; WordCard: typeof WordCard; Suggestion: typeof Suggestion; Note: typeof Note; HighlightRow: typeof HighlightRow; HighlightCard: typeof HighlightCard; SwatchRow: typeof SwatchRow; Scrim: typeof Scrim; Drawer: typeof Drawer; DrawerHeader: typeof DrawerHeader; DrawerBody: typeof DrawerBody; Sheet: typeof Sheet; SheetHeader: typeof SheetHeader; Dialog: typeof Dialog; Toast: typeof Toast; Popover: typeof Popover; SyncStatus: typeof SyncStatus; HintBar: typeof HintBar; ActionBanner: typeof ActionBanner; SelectionBar: typeof SelectionBar; GraphCanvas: typeof GraphCanvas; CharacterNode: typeof CharacterNode; NodePill: typeof NodePill; TieLabel: typeof TieLabel; CanvasToolbar: typeof CanvasToolbar; GraphControls: typeof GraphControls; ICON_NAMES: IconName[] } } }
+declare global { interface Window { DogEar: { AppShell: typeof AppShell; Container: typeof Container; ScrollArea: typeof ScrollArea; AppBody: typeof AppBody; Wordmark: typeof Wordmark; Icon: typeof Icon; Button: typeof Button; IconButton: typeof IconButton; TextButton: typeof TextButton; MicButton: typeof MicButton; MicPill: typeof MicPill; Fab: typeof Fab; SegmentedControl: typeof SegmentedControl; Tabs: typeof Tabs; Tab: typeof Tab; BottomTabBar: typeof BottomTabBar; AppHeader: typeof AppHeader; AccountButton: typeof AccountButton; Menu: typeof Menu; MenuItem: typeof MenuItem; Chip: typeof Chip; Badge: typeof Badge; Dot: typeof Dot; Field: typeof Field; TextInput: typeof TextInput; Select: typeof Select; TextArea: typeof TextArea; SearchField: typeof SearchField; Honeypot: typeof Honeypot; ErrorText: typeof ErrorText; Eyebrow: typeof Eyebrow; SectionHeader: typeof SectionHeader; EmptyState: typeof EmptyState; AuthCard: typeof AuthCard; Panel: typeof Panel; FeatureTile: typeof FeatureTile; SuccessDisc: typeof SuccessDisc; BookCover: typeof BookCover; BookCard: typeof BookCard; AddBookCard: typeof AddBookCard; RequestRow: typeof RequestRow; WordEntry: typeof WordEntry; WordCard: typeof WordCard; Suggestion: typeof Suggestion; Note: typeof Note; HighlightRow: typeof HighlightRow; HighlightCard: typeof HighlightCard; SwatchRow: typeof SwatchRow; Scrim: typeof Scrim; Drawer: typeof Drawer; DrawerHeader: typeof DrawerHeader; DrawerBody: typeof DrawerBody; Sheet: typeof Sheet; SheetHeader: typeof SheetHeader; Dialog: typeof Dialog; Toast: typeof Toast; Popover: typeof Popover; SyncStatus: typeof SyncStatus; HintBar: typeof HintBar; ActionBanner: typeof ActionBanner; SelectionBar: typeof SelectionBar; GraphCanvas: typeof GraphCanvas; CharacterNode: typeof CharacterNode; NodePill: typeof NodePill; TieLabel: typeof TieLabel; CanvasToolbar: typeof CanvasToolbar; GraphControls: typeof GraphControls; ICON_NAMES: IconName[] } } }
