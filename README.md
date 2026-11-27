@@ -41,6 +41,7 @@ It is an invite-only static site (React + Vite) on **GitHub Pages**, with **Supa
    5. [Connect the two halves](#45-connect-the-two-halves)
    6. [Custom domain (optional)](#46-custom-domain-optional)
    7. [Updating the app](#47-updating-the-app)
+   8. [Moving to another host](#48-moving-to-another-host)
 5. [Local development](#5-local-development)
 6. [Running it day to day](#6-running-it-day-to-day)
 7. [Troubleshooting](#7-troubleshooting)
@@ -67,6 +68,7 @@ Follow the sections in this order. Each step needs something from the one before
 ```
 .github/workflows/deploy.yml     builds and publishes to GitHub Pages on every push to main
 docs/                            the design system (zip) and its interactive demo
+  rfcs/                          proposals designed before they are built (see docs/rfcs/README.md)
 src/                             the React app (hash routing, so deep links work on Pages)
   design-system/                 the vendored design system: tokens, components, types
   ui/                            app glue: platform switch, palettes, drawers/sheets, account menu
@@ -347,6 +349,42 @@ Add the domain under **Settings → Pages → Custom domain**, create the DNS re
 ### 4.7 Updating the app
 
 Push to `main`. The workflow rebuilds and republishes in about a minute. Schema changes go in a new file in `supabase/migrations/` (name it with a later timestamp), applied with `npx supabase db push`.
+
+### 4.8 Moving to another host
+
+The app moves easily: it is a static site, the build uses relative paths (`base: './'` in `vite.config.js`), hash routing needs no server rewrite rules, and Supabase does not care where the front end lives. Allow under an hour, plus time for DNS.
+
+**Pick one:**
+
+- **Keep GitHub Pages, add your own domain.** The simplest move: follow 4.6, which covers the same four updates listed below.
+- **Another static host** (Netlify, Vercel, Cloudflare Pages, or any web server). Connect the repository, or upload a build:
+  - build command `npm run build`, output folder `dist`;
+  - set `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` in the host's build settings (the same public values as 4.2; they are baked in at build time);
+  - no redirect or rewrite rules are needed;
+  - once the new site works, delete `.github/workflows/deploy.yml` and turn Pages off, so two copies are not deployed.
+
+**Then point everything at the new address, or sign-in breaks:**
+
+1. Supabase **Authentication → URL Configuration**: set **Site URL** to the new address and add it to **Redirect URLs** (keep the trailing slash). Magic links only go to listed URLs.
+2. The invite function: `npx supabase secrets set SITE_URL=https://your-domain/`, so invite emails link to the new site.
+3. `supabase/config.toml`: update `site_url` and `additional_redirect_urls` if you push auth settings with the CLI.
+4. Email templates: if you edited them in 2.5 to mention the old address, update them.
+
+Nothing else needs changing: the `invite-user` function allows any origin, and the dictionary APIs are open to every site.
+
+**What readers notice, and how to soften it:**
+
+- **They sign in once more.** Sessions are stored per website, so the new address starts signed out. Tell readers before you switch.
+- **Unsent offline highlights stay behind.** The offline queue lives in the browser's storage for the old address. Ask readers to open the old site while online (the Saved pill turns green) before they move.
+- **Old links and bookmarks.** Leave the old site up for a while as a page that forwards to the new one and keeps the `#/book/…` part, for example an `index.html` containing:
+
+  ```html
+  <!doctype html><meta charset="utf-8"><title>Dog-Ear has moved</title>
+  <script>location.replace('https://your-domain/' + location.hash)</script>
+  <p>Dog-Ear has moved to <a href="https://your-domain/">your-domain</a>.</p>
+  ```
+
+**Check it worked:** on the new address, request a magic link and confirm it lands signed in; open a book's deep link (`#/book/…`) in a fresh window and confirm it returns there after sign-in; as an admin, approve a test invite and confirm the email links to the new address.
 
 ---
 
