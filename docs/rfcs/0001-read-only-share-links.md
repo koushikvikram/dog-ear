@@ -46,6 +46,8 @@ Dog-Ear is invite-only and every book is private to its owner. Readers sometimes
 
 ## Proposed design
 
+The SQL below is a sketch written against the current schema; it has not been run. Test it in a scratch Supabase project (or `npx supabase start`) before building.
+
 ### 1. Data model
 
 One nullable column on `books`. Empty means not shared.
