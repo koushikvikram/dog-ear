@@ -5,7 +5,7 @@
 | **Status** | Draft |
 | **Created** | 2026-11-27 |
 | **Last updated** | 2026-11-27 |
-| **Estimate** | About 3–3½ weeks of focused work, in five phases that can ship one at a time; open-model routing later, about a week more |
+| **Estimate** | About 3–4 weeks of focused work, in five phases that can ship one at a time; open-model routing later, about a week more |
 | **Depends on** | An Anthropic API account and key; no other RFC |
 
 ## Summary
@@ -358,7 +358,7 @@ Each phase ships on its own; phases 1 and 2 don't depend on the assistant.
 | 5. Voice | Mic in the panel, spoken replies, settings | 1–2 days |
 | Throughout | Design system additions, the evaluation set, README and privacy updates | 2–3 days |
 | Model-neutral gateway | Adapters for the Anthropic and OpenAI-compatible APIs, a rules parser for fixed commands | 1–2 days |
-| **Total** | | **About 3–3½ weeks** |
+| **Total** | | **About 3–4 weeks** (15–20 working days) |
 | Later, optional | Open 8B model behind the router (hosted), topic routing, constrained decoding, evaluation runs | 3–5 days |
 
 ## Rollout
