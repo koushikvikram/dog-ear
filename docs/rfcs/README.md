@@ -17,6 +17,7 @@ Proposals for changes big enough to need a design before code: new features that
 | RFC | Title | Status |
 |---|---|---|
 | [0001](0001-read-only-share-links.md) | Read-only share links for books | Parked |
+| [0002](0002-reading-assistant-camera-barcode.md) | Reading assistant, camera highlights and barcode books | Draft |
 
 ## Writing one
 
