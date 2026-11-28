@@ -1,0 +1,240 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="1400" height="1010" viewBox="0 0 1400 1010" role="img" aria-labelledby="t d" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif">
+  <title id="t">Dog-Ear reading assistant, camera highlights and barcode books: architecture</title>
+  <desc id="d">The reader's browser runs the Dog-Ear web app: assistant panel, tool runner, voice, camera capture and barcode scanner. Supabase hosts two Edge Functions that hold the Anthropic API key and check the reader's token and quota, plus Postgres with Row Level Security. Anthropic's API runs Claude Opus 5.5 for the assistant and for reading the cropped passage. Public web APIs supply word definitions and book details by ISBN.</desc>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 z" fill="#16191F"/>
+    </marker>
+
+    <!-- Icon glyphs: white on a coloured tile, drawn in a 56 x 56 box -->
+    <symbol id="g-user" viewBox="0 0 56 56"><circle cx="28" cy="20" r="8" fill="none" stroke="#fff" stroke-width="2.6"/><path d="M12 44 C12 33 44 33 44 44" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round"/></symbol>
+    <symbol id="g-chat" viewBox="0 0 56 56"><path d="M16 14 H40 A4 4 0 0 1 44 18 V33 A4 4 0 0 1 40 37 H26 L18 43 V37 H16 A4 4 0 0 1 12 33 V18 A4 4 0 0 1 16 14 Z" fill="none" stroke="#fff" stroke-width="2.6" stroke-linejoin="round"/><circle cx="21" cy="25.5" r="2" fill="#fff"/><circle cx="28" cy="25.5" r="2" fill="#fff"/><circle cx="35" cy="25.5" r="2" fill="#fff"/></symbol>
+    <symbol id="g-gear" viewBox="0 0 56 56"><circle cx="28" cy="28" r="11" fill="none" stroke="#fff" stroke-width="2.6"/><circle cx="28" cy="28" r="4.5" fill="none" stroke="#fff" stroke-width="2.6"/><g stroke="#fff" stroke-width="4" stroke-linecap="round"><path d="M28 12 V15"/><path d="M28 41 V44"/><path d="M12 28 H15"/><path d="M41 28 H44"/><path d="M16.7 16.7 L18.8 18.8"/><path d="M37.2 37.2 L39.3 39.3"/><path d="M16.7 39.3 L18.8 37.2"/><path d="M37.2 18.8 L39.3 16.7"/></g></symbol>
+    <symbol id="g-mic" viewBox="0 0 56 56"><rect x="22" y="11" width="12" height="21" rx="6" fill="none" stroke="#fff" stroke-width="2.6"/><path d="M16 27 A12 12 0 0 0 40 27" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round"/><path d="M28 39 V45 M22 45 H34" stroke="#fff" stroke-width="2.6" stroke-linecap="round"/></symbol>
+    <symbol id="g-camera" viewBox="0 0 56 56"><rect x="11" y="19" width="34" height="23" rx="4" fill="none" stroke="#fff" stroke-width="2.6"/><path d="M21 19 L24 14 H32 L35 19" fill="none" stroke="#fff" stroke-width="2.6" stroke-linejoin="round"/><circle cx="28" cy="30.5" r="6.5" fill="none" stroke="#fff" stroke-width="2.6"/></symbol>
+    <symbol id="g-barcode" viewBox="0 0 56 56"><g fill="#fff"><rect x="13" y="15" width="3" height="26"/><rect x="18" y="15" width="1.6" height="26"/><rect x="21.5" y="15" width="3.5" height="26"/><rect x="27" y="15" width="1.6" height="26"/><rect x="30.5" y="15" width="3" height="26"/><rect x="35.5" y="15" width="1.6" height="26"/><rect x="39" y="15" width="4" height="26"/></g></symbol>
+    <symbol id="g-bolt" viewBox="0 0 56 56"><path d="M31 10 L16 31 H27 L24 46 L40 24 H29 Z" fill="#fff"/></symbol>
+    <symbol id="g-key" viewBox="0 0 56 56"><circle cx="19" cy="28" r="7" fill="none" stroke="#fff" stroke-width="2.6"/><path d="M26 28 H44 M37 28 V34 M42 28 V32" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round"/></symbol>
+    <symbol id="g-db" viewBox="0 0 56 56"><ellipse cx="28" cy="16" rx="13" ry="4.5" fill="none" stroke="#fff" stroke-width="2.6"/><path d="M15 16 V40 A13 4.5 0 0 0 41 40 V16" fill="none" stroke="#fff" stroke-width="2.6"/><path d="M15 28 A13 4.5 0 0 0 41 28" fill="none" stroke="#fff" stroke-width="2.6"/></symbol>
+    <symbol id="g-spark" viewBox="0 0 56 56"><path d="M28 10 C29.2 21 35 26.8 46 28 C35 29.2 29.2 35 28 46 C26.8 35 21 29.2 10 28 C21 26.8 26.8 21 28 10 Z" fill="#fff"/></symbol>
+    <symbol id="g-eye" viewBox="0 0 56 56"><path d="M10 28 C16 17 40 17 46 28 C40 39 16 39 10 28 Z" fill="none" stroke="#fff" stroke-width="2.6" stroke-linejoin="round"/><circle cx="28" cy="28" r="5.5" fill="none" stroke="#fff" stroke-width="2.6"/></symbol>
+    <symbol id="g-book" viewBox="0 0 56 56"><path d="M28 18 C23 14 16 14 11 16 V41 C16 39 23 39 28 43 C33 39 40 39 45 41 V16 C40 14 33 14 28 18 Z" fill="none" stroke="#fff" stroke-width="2.6" stroke-linejoin="round"/><path d="M28 18 V42" stroke="#fff" stroke-width="2.6"/></symbol>
+    <symbol id="g-aa" viewBox="0 0 56 56"><text x="28" y="36" text-anchor="middle" font-family="Georgia, 'Times New Roman', serif" font-size="24" font-weight="700" fill="#fff">Aa</text></symbol>
+    <symbol id="g-shield" viewBox="0 0 24 24"><path d="M12 2 L21 5.5 V11.5 C21 17 17 20.5 12 22 C7 20.5 3 17 3 11.5 V5.5 Z" fill="#DD344C" stroke="#fff" stroke-width="1.6"/><path d="M8 12 L11 15 L16.5 9" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+
+    <!-- Group label glyphs (small) -->
+    <symbol id="s-window" viewBox="0 0 24 24"><rect x="2.5" y="4" width="19" height="16" rx="2" fill="none" stroke="#fff" stroke-width="1.8"/><path d="M2.5 8.5 H21.5" stroke="#fff" stroke-width="1.8"/><circle cx="5.5" cy="6.3" r="0.9" fill="#fff"/><circle cx="8.3" cy="6.3" r="0.9" fill="#fff"/></symbol>
+    <symbol id="s-cloud" viewBox="0 0 24 24"><path d="M7 18 H17.5 A4 4 0 0 0 17.5 10 A5.5 5.5 0 0 0 7 9 A4.5 4.5 0 0 0 7 18 Z" fill="none" stroke="#fff" stroke-width="1.8" stroke-linejoin="round"/></symbol>
+    <symbol id="s-globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="none" stroke="#fff" stroke-width="1.8"/><path d="M3 12 H21 M12 3 C8.5 7 8.5 17 12 21 M12 3 C15.5 7 15.5 17 12 21" fill="none" stroke="#fff" stroke-width="1.6"/></symbol>
+  </defs>
+
+  <rect width="1400" height="1010" fill="#FFFFFF"/>
+
+  <!-- Title -->
+  <text x="40" y="50" font-size="24" font-weight="700" fill="#16191F">Reading assistant, camera highlights and barcode books</text>
+  <text x="40" y="76" font-size="14" fill="#545B64">RFC 0002 · Architecture. Claude decides what to do; every change runs in the browser, as the reader, so Row Level Security still applies.</text>
+
+  <!-- ===================== Groups ===================== -->
+  <!-- A: browser -->
+  <rect x="130" y="110" width="440" height="680" rx="6" fill="#F5F7FF" stroke="#3B48CC" stroke-width="1.5"/>
+  <rect x="130" y="110" width="30" height="30" rx="4" fill="#3B48CC"/><use href="#s-window" xlink:href="#s-window" x="133" y="113" width="24" height="24"/>
+  <text x="170" y="131" font-size="14" font-weight="700" fill="#3B48CC">Reader's phone or computer</text>
+  <text x="560" y="131" font-size="12" fill="#545B64" text-anchor="end">Dog-Ear web app · static site</text>
+
+  <!-- B: Supabase -->
+  <rect x="660" y="110" width="360" height="470" rx="6" fill="#F3FBF7" stroke="#1E8E5A" stroke-width="1.5"/>
+  <rect x="660" y="110" width="30" height="30" rx="4" fill="#1E8E5A"/><use href="#s-cloud" xlink:href="#s-cloud" x="663" y="113" width="24" height="24"/>
+  <text x="700" y="131" font-size="14" font-weight="700" fill="#1E8E5A">Supabase</text>
+
+  <!-- C: public APIs -->
+  <rect x="660" y="610" width="360" height="180" rx="6" fill="#F8F5FF" stroke="#8C4FFF" stroke-width="1.5"/>
+  <rect x="660" y="610" width="30" height="30" rx="4" fill="#8C4FFF"/><use href="#s-globe" xlink:href="#s-globe" x="663" y="613" width="24" height="24"/>
+  <text x="700" y="631" font-size="14" font-weight="700" fill="#8C4FFF">Public web APIs · no key</text>
+
+  <!-- D: Anthropic -->
+  <rect x="1100" y="110" width="270" height="470" rx="6" fill="#F0FAF8" stroke="#01A88D" stroke-width="1.5"/>
+  <rect x="1100" y="110" width="30" height="30" rx="4" fill="#01A88D"/><use href="#s-cloud" xlink:href="#s-cloud" x="1103" y="113" width="24" height="24"/>
+  <text x="1140" y="131" font-size="14" font-weight="700" fill="#01A88D">Anthropic API</text>
+
+  <!-- ===================== Arrows (drawn under the nodes) ===================== -->
+  <g fill="none" stroke="#16191F" stroke-width="1.75">
+    <!-- 1 reader -> panel -->
+    <path d="M100 176 H154" marker-end="url(#arrow)"/>
+    <!-- panel <-> tool runner -->
+    <path d="M188 220 V266" marker-start="url(#arrow)" marker-end="url(#arrow)"/>
+    <!-- panel <-> voice (left lane) -->
+    <path d="M158 408 H146 V202 H154" marker-start="url(#arrow)" marker-end="url(#arrow)"/>
+    <!-- 2 panel -> assistant function -->
+    <path d="M470 176 H682" marker-end="url(#arrow)"/>
+    <!-- 4 assistant function -> panel (stream) -->
+    <path d="M686 204 H474" stroke-dasharray="6 4" marker-end="url(#arrow)"/>
+    <!-- 3 function -> Claude -->
+    <path d="M1004 176 H1122" marker-end="url(#arrow)"/>
+    <!-- 4 Claude -> function (stream) -->
+    <path d="M1126 204 H1008" stroke-dasharray="6 4" marker-end="url(#arrow)"/>
+    <!-- function <-> auth and secrets -->
+    <path d="M718 220 V266" marker-start="url(#arrow)" marker-end="url(#arrow)"/>
+    <!-- 5 tool runner -> Postgres -->
+    <path d="M470 290 H620 V408 H682" marker-end="url(#arrow)"/>
+    <!-- 9 tool runner -> dictionary APIs -->
+    <path d="M470 310 H590 V673 H682" marker-end="url(#arrow)"/>
+    <!-- 7 Claude vision link -->
+    <path d="M1004 505 H1122" marker-end="url(#arrow)"/>
+    <path d="M1126 531 H1008" stroke-dasharray="6 4" marker-end="url(#arrow)"/>
+    <!-- 8 barcode -> book APIs -->
+    <path d="M470 758 H682" marker-end="url(#arrow)"/>
+  </g>
+  <!-- 7 camera <-> read-passage, with a gap where it crosses step 9 -->
+  <g fill="none" stroke-width="1.75">
+    <path d="M470 505 H682" stroke="#FFFFFF" stroke-width="9"/>
+    <path d="M686 531 H474" stroke="#FFFFFF" stroke-width="9"/>
+    <path d="M470 505 H682" stroke="#16191F" marker-end="url(#arrow)"/>
+    <path d="M686 531 H474" stroke="#16191F" stroke-dasharray="6 4" marker-end="url(#arrow)"/>
+  </g>
+
+  <!-- small connector labels -->
+  <g font-size="11" fill="#545B64">
+    <text x="196" y="247">tool calls and results</text>
+    <text x="726" y="247">verify token, quota, key</text>
+    <text x="634" y="356" transform="rotate(90 634 356)" text-anchor="middle">as the reader</text>
+  </g>
+
+  <!-- ===================== Nodes ===================== -->
+  <!-- Reader -->
+  <rect x="40" y="148" width="56" height="56" rx="8" fill="#232F3E"/><use href="#g-user" xlink:href="#g-user" x="40" y="148" width="56" height="56"/>
+  <text x="68" y="224" font-size="13" font-weight="700" fill="#16191F" text-anchor="middle">Reader</text>
+
+  <!-- A1 panel -->
+  <rect x="160" y="160" width="56" height="56" rx="8" fill="#3B48CC"/><use href="#g-chat" xlink:href="#g-chat" x="160" y="160" width="56" height="56"/>
+  <text x="230" y="183" font-size="15" font-weight="700" fill="#16191F">Assistant panel</text>
+  <text x="230" y="201" font-size="12.5" fill="#545B64">Chat, streaming replies, Undo</text>
+
+  <!-- A2 tool runner -->
+  <rect x="160" y="270" width="56" height="56" rx="8" fill="#3B48CC"/><use href="#g-gear" xlink:href="#g-gear" x="160" y="270" width="56" height="56"/>
+  <text x="230" y="293" font-size="15" font-weight="700" fill="#16191F">Tool runner</text>
+  <text x="230" y="311" font-size="12.5" fill="#545B64">Calls useBookData</text>
+
+  <!-- A3 voice -->
+  <rect x="160" y="380" width="56" height="56" rx="8" fill="#3B48CC"/><use href="#g-mic" xlink:href="#g-mic" x="160" y="380" width="56" height="56"/>
+  <text x="230" y="403" font-size="15" font-weight="700" fill="#16191F">Speech in and out</text>
+  <text x="230" y="421" font-size="12.5" fill="#545B64">Browser speech recognition</text>
+  <text x="230" y="437" font-size="12.5" fill="#545B64">and speech synthesis</text>
+
+  <!-- A4 camera -->
+  <rect x="160" y="490" width="56" height="56" rx="8" fill="#3B48CC"/><use href="#g-camera" xlink:href="#g-camera" x="160" y="490" width="56" height="56"/>
+  <text x="230" y="499" font-size="15" font-weight="700" fill="#16191F">Camera capture</text>
+  <text x="230" y="547" font-size="12.5" fill="#545B64">Phone camera; crop in browser</text>
+
+  <!-- A5 barcode -->
+  <rect x="160" y="730" width="56" height="56" rx="8" fill="#3B48CC"/><use href="#g-barcode" xlink:href="#g-barcode" x="160" y="730" width="56" height="56"/>
+  <text x="230" y="749" font-size="15" font-weight="700" fill="#16191F">Barcode scanner</text>
+  <text x="230" y="780" font-size="12.5" fill="#545B64">BarcodeDetector or ZXing</text>
+
+  <!-- B1 assistant function -->
+  <rect x="690" y="160" width="56" height="56" rx="8" fill="#ED7100"/><use href="#g-bolt" xlink:href="#g-bolt" x="690" y="160" width="56" height="56"/>
+  <text x="760" y="183" font-size="15" font-weight="700" fill="#16191F">Edge Function: assistant</text>
+  <text x="760" y="201" font-size="12.5" fill="#545B64">Relays chat to Claude</text>
+
+  <!-- B2 auth and secrets -->
+  <rect x="690" y="270" width="56" height="56" rx="8" fill="#DD344C"/><use href="#g-key" xlink:href="#g-key" x="690" y="270" width="56" height="56"/>
+  <text x="760" y="293" font-size="15" font-weight="700" fill="#16191F">Auth and secrets</text>
+  <text x="760" y="311" font-size="12.5" fill="#545B64">Reader's JWT · Anthropic API key</text>
+
+  <!-- B3 Postgres -->
+  <rect x="690" y="380" width="56" height="56" rx="8" fill="#C925D1"/><use href="#g-db" xlink:href="#g-db" x="690" y="380" width="56" height="56"/>
+  <use href="#g-shield" xlink:href="#g-shield" x="733" y="368" width="24" height="24"/>
+  <text x="760" y="403" font-size="15" font-weight="700" fill="#16191F">Postgres · Row Level Security</text>
+  <text x="760" y="421" font-size="12.5" fill="#545B64">Books, characters, highlights, words</text>
+  <text x="760" y="437" font-size="12.5" fill="#545B64">ai_usage quota · ai_sessions</text>
+
+  <!-- B4 read-passage function -->
+  <rect x="690" y="490" width="56" height="56" rx="8" fill="#ED7100"/><use href="#g-bolt" xlink:href="#g-bolt" x="690" y="490" width="56" height="56"/>
+  <text x="760" y="499" font-size="15" font-weight="700" fill="#16191F">Edge Function: read-passage</text>
+  <text x="760" y="547" font-size="12.5" fill="#545B64">One vision request per capture</text>
+
+  <!-- C1 dictionary -->
+  <rect x="690" y="650" width="56" height="56" rx="8" fill="#8C4FFF"/><use href="#g-aa" xlink:href="#g-aa" x="690" y="650" width="56" height="56"/>
+  <text x="760" y="673" font-size="15" font-weight="700" fill="#16191F">dictionaryapi.dev, Datamuse</text>
+  <text x="760" y="691" font-size="12.5" fill="#545B64">Definitions, cached in Postgres</text>
+
+  <!-- C2 book APIs -->
+  <rect x="690" y="730" width="56" height="56" rx="8" fill="#8C4FFF"/><use href="#g-book" xlink:href="#g-book" x="690" y="730" width="56" height="56"/>
+  <text x="760" y="749" font-size="15" font-weight="700" fill="#16191F">Open Library, Google Books</text>
+  <text x="760" y="780" font-size="12.5" fill="#545B64">ISBN to title and author</text>
+
+  <!-- D1 Claude assistant -->
+  <rect x="1130" y="160" width="56" height="56" rx="8" fill="#01A88D"/><use href="#g-spark" xlink:href="#g-spark" x="1130" y="160" width="56" height="56"/>
+  <text x="1200" y="183" font-size="15" font-weight="700" fill="#16191F">Claude Opus 5.5</text>
+  <text x="1200" y="201" font-size="12.5" fill="#545B64">Chooses tools, writes replies</text>
+  <text x="1200" y="232" font-size="12.5" fill="#545B64">Managed Agents session</text>
+  <text x="1200" y="248" font-size="12.5" fill="#545B64">or Messages API</text>
+
+  <!-- D2 Claude vision -->
+  <rect x="1130" y="490" width="56" height="56" rx="8" fill="#01A88D"/><use href="#g-eye" xlink:href="#g-eye" x="1130" y="490" width="56" height="56"/>
+  <text x="1200" y="499" font-size="15" font-weight="700" fill="#16191F">Claude Opus 5.5</text>
+  <text x="1200" y="547" font-size="12.5" fill="#545B64">Vision: passage to text</text>
+
+  <!-- ===================== Step badges ===================== -->
+  <g font-size="12" font-weight="700" text-anchor="middle" fill="#FFFFFF">
+    <circle cx="127" cy="176" r="11" fill="#16191F"/><text x="127" y="180.5">1</text>
+    <circle cx="540" cy="176" r="11" fill="#16191F"/><text x="540" y="180.5">2</text>
+    <circle cx="1050" cy="176" r="11" fill="#16191F"/><text x="1050" y="180.5">3</text>
+    <circle cx="1080" cy="204" r="11" fill="#16191F"/><text x="1080" y="208.5">4</text>
+    <circle cx="630" cy="204" r="11" fill="#16191F"/><text x="630" y="208.5">4</text>
+    <circle cx="620" cy="330" r="11" fill="#16191F"/><text x="620" y="334.5">5</text>
+    <circle cx="146" cy="300" r="11" fill="#16191F"/><text x="146" y="304.5">6</text>
+    <circle cx="530" cy="505" r="11" fill="#16191F"/><text x="530" y="509.5">7</text>
+    <circle cx="1050" cy="505" r="11" fill="#16191F"/><text x="1050" y="509.5">7</text>
+    <circle cx="590" cy="480" r="11" fill="#16191F"/><text x="590" y="484.5">9</text>
+    <circle cx="560" cy="758" r="11" fill="#16191F"/><text x="560" y="762.5">8</text>
+  </g>
+
+  <!-- ===================== Key ===================== -->
+  <rect x="1100" y="610" width="270" height="180" rx="6" fill="#FFFFFF" stroke="#AAB7B8" stroke-width="1.2"/>
+  <text x="1120" y="638" font-size="14" font-weight="700" fill="#16191F">Key</text>
+  <path d="M1120 664 H1170" stroke="#16191F" stroke-width="1.75" marker-end="url(#arrow)"/>
+  <text x="1184" y="668" font-size="12.5" fill="#16191F">Request</text>
+  <path d="M1120 694 H1170" stroke="#16191F" stroke-width="1.75" stroke-dasharray="6 4" marker-end="url(#arrow)"/>
+  <text x="1184" y="698" font-size="12.5" fill="#16191F">Reply or stream</text>
+  <circle cx="1131" cy="724" r="11" fill="#16191F"/><text x="1131" y="728.5" font-size="12" font-weight="700" fill="#FFFFFF" text-anchor="middle">n</text>
+  <text x="1184" y="728" font-size="12.5" fill="#16191F">Step, explained below</text>
+  <use href="#g-shield" xlink:href="#g-shield" x="1119" y="744" width="24" height="24"/>
+  <text x="1184" y="761" font-size="12.5" fill="#16191F">Row Level Security applies</text>
+
+  <!-- ===================== Steps ===================== -->
+  <line x1="40" y1="822" x2="1360" y2="822" stroke="#D5DBDB" stroke-width="1"/>
+  <g font-size="13" fill="#16191F">
+    <g font-size="12" font-weight="700" text-anchor="middle" fill="#FFFFFF">
+      <circle cx="51" cy="854" r="11" fill="#16191F"/><text x="51" y="858.5">1</text>
+      <circle cx="51" cy="904" r="11" fill="#16191F"/><text x="51" y="908.5">2</text>
+      <circle cx="51" cy="954" r="11" fill="#16191F"/><text x="51" y="958.5">3</text>
+      <circle cx="491" cy="854" r="11" fill="#16191F"/><text x="491" y="858.5">4</text>
+      <circle cx="491" cy="904" r="11" fill="#16191F"/><text x="491" y="908.5">5</text>
+      <circle cx="491" cy="954" r="11" fill="#16191F"/><text x="491" y="958.5">6</text>
+      <circle cx="931" cy="854" r="11" fill="#16191F"/><text x="931" y="858.5">7</text>
+      <circle cx="931" cy="904" r="11" fill="#16191F"/><text x="931" y="908.5">8</text>
+      <circle cx="931" cy="954" r="11" fill="#16191F"/><text x="931" y="958.5">9</text>
+    </g>
+    <text x="72" y="852">You type or speak to the assistant panel.</text>
+    <text x="72" y="869" fill="#545B64">Speech becomes text in the browser.</text>
+    <text x="72" y="902">The panel sends your message, and each tool</text>
+    <text x="72" y="919" fill="#545B64">result, with your sign-in token (JWT).</text>
+    <text x="72" y="952">The function checks the token and today's quota,</text>
+    <text x="72" y="969" fill="#545B64">adds the API key and calls Claude.</text>
+
+    <text x="512" y="852">Claude's reply, or a tool call, streams back</text>
+    <text x="512" y="869" fill="#545B64">through the function to the panel.</text>
+    <text x="512" y="902">The browser runs each tool through useBookData,</text>
+    <text x="512" y="919" fill="#545B64">as you, so Row Level Security applies.</text>
+    <text x="512" y="952">The reply appears in the chat and, if you like,</text>
+    <text x="512" y="969" fill="#545B64">is read aloud.</text>
+
+    <text x="952" y="852">The cropped passage goes to read-passage; Claude</text>
+    <text x="952" y="869" fill="#545B64">reads its text back into the highlight form.</text>
+    <text x="952" y="902">A scanned ISBN is looked up in Open Library or</text>
+    <text x="952" y="919" fill="#545B64">Google Books; create_book adds the book.</text>
+    <text x="952" y="952">Word lookups use the dictionary cache first,</text>
+    <text x="952" y="969" fill="#545B64">then dictionaryapi.dev and Datamuse.</text>
+  </g>
+</svg>

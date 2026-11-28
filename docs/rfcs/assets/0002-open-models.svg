@@ -1,0 +1,161 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="1400" height="1110" viewBox="0 0 1400 1110" role="img" aria-labelledby="t d" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif">
+<title id="t">Dog-Ear assistant with open models: model-neutral gateway and hosting options</title>
+<desc id="d">The browser keeps the same assistant panel and tool runner, and can optionally run a small model, Whisper and Tesseract on the device. A Supabase Edge Function acts as a model-neutral gateway: a command parser handles simple commands without a model, a router picks a small or large model, and adapters speak the Anthropic Messages API or the OpenAI-compatible API. Backends are Claude, hosted open-model APIs, or your own GPU server running vLLM, Whisper and an OCR model. Every turn is traced and scored against an evaluation set.</desc>
+<defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 z" fill="#16191F"/>
+    </marker>
+
+    <!-- Icon glyphs: white on a coloured tile, drawn in a 56 x 56 box -->
+    <symbol id="g-user" viewBox="0 0 56 56"><circle cx="28" cy="20" r="8" fill="none" stroke="#fff" stroke-width="2.6"/><path d="M12 44 C12 33 44 33 44 44" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round"/></symbol>
+    <symbol id="g-chat" viewBox="0 0 56 56"><path d="M16 14 H40 A4 4 0 0 1 44 18 V33 A4 4 0 0 1 40 37 H26 L18 43 V37 H16 A4 4 0 0 1 12 33 V18 A4 4 0 0 1 16 14 Z" fill="none" stroke="#fff" stroke-width="2.6" stroke-linejoin="round"/><circle cx="21" cy="25.5" r="2" fill="#fff"/><circle cx="28" cy="25.5" r="2" fill="#fff"/><circle cx="35" cy="25.5" r="2" fill="#fff"/></symbol>
+    <symbol id="g-gear" viewBox="0 0 56 56"><circle cx="28" cy="28" r="11" fill="none" stroke="#fff" stroke-width="2.6"/><circle cx="28" cy="28" r="4.5" fill="none" stroke="#fff" stroke-width="2.6"/><g stroke="#fff" stroke-width="4" stroke-linecap="round"><path d="M28 12 V15"/><path d="M28 41 V44"/><path d="M12 28 H15"/><path d="M41 28 H44"/><path d="M16.7 16.7 L18.8 18.8"/><path d="M37.2 37.2 L39.3 39.3"/><path d="M16.7 39.3 L18.8 37.2"/><path d="M37.2 18.8 L39.3 16.7"/></g></symbol>
+    <symbol id="g-mic" viewBox="0 0 56 56"><rect x="22" y="11" width="12" height="21" rx="6" fill="none" stroke="#fff" stroke-width="2.6"/><path d="M16 27 A12 12 0 0 0 40 27" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round"/><path d="M28 39 V45 M22 45 H34" stroke="#fff" stroke-width="2.6" stroke-linecap="round"/></symbol>
+    <symbol id="g-camera" viewBox="0 0 56 56"><rect x="11" y="19" width="34" height="23" rx="4" fill="none" stroke="#fff" stroke-width="2.6"/><path d="M21 19 L24 14 H32 L35 19" fill="none" stroke="#fff" stroke-width="2.6" stroke-linejoin="round"/><circle cx="28" cy="30.5" r="6.5" fill="none" stroke="#fff" stroke-width="2.6"/></symbol>
+    <symbol id="g-barcode" viewBox="0 0 56 56"><g fill="#fff"><rect x="13" y="15" width="3" height="26"/><rect x="18" y="15" width="1.6" height="26"/><rect x="21.5" y="15" width="3.5" height="26"/><rect x="27" y="15" width="1.6" height="26"/><rect x="30.5" y="15" width="3" height="26"/><rect x="35.5" y="15" width="1.6" height="26"/><rect x="39" y="15" width="4" height="26"/></g></symbol>
+    <symbol id="g-bolt" viewBox="0 0 56 56"><path d="M31 10 L16 31 H27 L24 46 L40 24 H29 Z" fill="#fff"/></symbol>
+    <symbol id="g-key" viewBox="0 0 56 56"><circle cx="19" cy="28" r="7" fill="none" stroke="#fff" stroke-width="2.6"/><path d="M26 28 H44 M37 28 V34 M42 28 V32" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round"/></symbol>
+    <symbol id="g-db" viewBox="0 0 56 56"><ellipse cx="28" cy="16" rx="13" ry="4.5" fill="none" stroke="#fff" stroke-width="2.6"/><path d="M15 16 V40 A13 4.5 0 0 0 41 40 V16" fill="none" stroke="#fff" stroke-width="2.6"/><path d="M15 28 A13 4.5 0 0 0 41 28" fill="none" stroke="#fff" stroke-width="2.6"/></symbol>
+    <symbol id="g-spark" viewBox="0 0 56 56"><path d="M28 10 C29.2 21 35 26.8 46 28 C35 29.2 29.2 35 28 46 C26.8 35 21 29.2 10 28 C21 26.8 26.8 21 28 10 Z" fill="#fff"/></symbol>
+    <symbol id="g-eye" viewBox="0 0 56 56"><path d="M10 28 C16 17 40 17 46 28 C40 39 16 39 10 28 Z" fill="none" stroke="#fff" stroke-width="2.6" stroke-linejoin="round"/><circle cx="28" cy="28" r="5.5" fill="none" stroke="#fff" stroke-width="2.6"/></symbol>
+    <symbol id="g-book" viewBox="0 0 56 56"><path d="M28 18 C23 14 16 14 11 16 V41 C16 39 23 39 28 43 C33 39 40 39 45 41 V16 C40 14 33 14 28 18 Z" fill="none" stroke="#fff" stroke-width="2.6" stroke-linejoin="round"/><path d="M28 18 V42" stroke="#fff" stroke-width="2.6"/></symbol>
+    <symbol id="g-aa" viewBox="0 0 56 56"><text x="28" y="36" text-anchor="middle" font-family="Georgia, 'Times New Roman', serif" font-size="24" font-weight="700" fill="#fff">Aa</text></symbol>
+    <symbol id="g-shield" viewBox="0 0 24 24"><path d="M12 2 L21 5.5 V11.5 C21 17 17 20.5 12 22 C7 20.5 3 17 3 11.5 V5.5 Z" fill="#DD344C" stroke="#fff" stroke-width="1.6"/><path d="M8 12 L11 15 L16.5 9" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+
+    <!-- Group label glyphs (small) -->
+    <symbol id="s-window" viewBox="0 0 24 24"><rect x="2.5" y="4" width="19" height="16" rx="2" fill="none" stroke="#fff" stroke-width="1.8"/><path d="M2.5 8.5 H21.5" stroke="#fff" stroke-width="1.8"/><circle cx="5.5" cy="6.3" r="0.9" fill="#fff"/><circle cx="8.3" cy="6.3" r="0.9" fill="#fff"/></symbol>
+    <symbol id="s-cloud" viewBox="0 0 24 24"><path d="M7 18 H17.5 A4 4 0 0 0 17.5 10 A5.5 5.5 0 0 0 7 9 A4.5 4.5 0 0 0 7 18 Z" fill="none" stroke="#fff" stroke-width="1.8" stroke-linejoin="round"/></symbol>
+    <symbol id="s-globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="none" stroke="#fff" stroke-width="1.8"/><path d="M3 12 H21 M12 3 C8.5 7 8.5 17 12 21 M12 3 C15.5 7 15.5 17 12 21" fill="none" stroke="#fff" stroke-width="1.6"/></symbol>
+  
+    <symbol id="g-fork" viewBox="0 0 56 56"><path d="M12 28 H24 C30 28 30 17 38 17 H42 M24 28 C30 28 30 39 38 39 H42" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round"/><path d="M39 13 L44 17 L39 21 M39 35 L44 39 L39 43" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="g-plug" viewBox="0 0 56 56"><path d="M22 12 V20 M34 12 V20" stroke="#fff" stroke-width="2.6" stroke-linecap="round"/><path d="M16 20 H40 V27 A12 12 0 0 1 28 39 A12 12 0 0 1 16 27 Z" fill="none" stroke="#fff" stroke-width="2.6" stroke-linejoin="round"/><path d="M28 39 V46" stroke="#fff" stroke-width="2.6" stroke-linecap="round"/></symbol>
+    <symbol id="g-chip" viewBox="0 0 56 56"><rect x="17" y="17" width="22" height="22" rx="3" fill="none" stroke="#fff" stroke-width="2.6"/><rect x="23" y="23" width="10" height="10" rx="1.5" fill="#fff"/><g stroke="#fff" stroke-width="2.4" stroke-linecap="round"><path d="M22 11 V16 M28 11 V16 M34 11 V16 M22 40 V45 M28 40 V45 M34 40 V45 M11 22 H16 M11 28 H16 M11 34 H16 M40 22 H45 M40 28 H45 M40 34 H45"/></g></symbol>
+    <symbol id="g-cloud" viewBox="0 0 56 56"><path d="M17 40 H39 A8 8 0 0 0 39 24 A11 11 0 0 0 18 22 A9 9 0 0 0 17 40 Z" fill="none" stroke="#fff" stroke-width="2.6" stroke-linejoin="round"/></symbol>
+    <symbol id="g-chart" viewBox="0 0 56 56"><path d="M12 44 H44" stroke="#fff" stroke-width="2.6" stroke-linecap="round"/><rect x="15" y="30" width="6" height="12" fill="#fff"/><rect x="25" y="23" width="6" height="19" fill="#fff"/><rect x="35" y="15" width="6" height="27" fill="#fff"/></symbol>
+    <symbol id="g-list" viewBox="0 0 56 56"><g stroke="#fff" stroke-width="2.6" stroke-linecap="round" fill="none"><path d="M14 18 L17 21 L22 15"/><path d="M14 30 L17 33 L22 27"/><path d="M14 42 L17 45 L22 39"/><path d="M27 18 H43 M27 30 H43 M27 42 H43"/></g></symbol>
+</defs>
+<rect width="1400" height="1110" fill="#FFFFFF"/>
+<text x="40" y="50" font-size="24" font-weight="700" fill="#16191F">Open models: a model-neutral gateway and where to host them</text>
+<text x="40" y="76" font-size="14" fill="#545B64">RFC 0002 · Hybrid design. The browser and tools stay the same; the gateway decides which model answers, so models can be swapped or mixed.</text>
+<rect x="40" y="110" width="380" height="600" rx="6" fill="#F5F7FF" stroke="#3B48CC" stroke-width="1.5"/>
+<rect x="40" y="110" width="30" height="30" rx="4" fill="#3B48CC"/><use href="#s-window" xlink:href="#s-window" x="43" y="113" width="24" height="24"/>
+<text x="80" y="131" font-size="14" font-weight="700" fill="#3B48CC">Reader's phone or computer</text>
+<rect x="500" y="110" width="400" height="600" rx="6" fill="#F3FBF7" stroke="#1E8E5A" stroke-width="1.5"/>
+<rect x="500" y="110" width="30" height="30" rx="4" fill="#1E8E5A"/><use href="#s-cloud" xlink:href="#s-cloud" x="503" y="113" width="24" height="24"/>
+<text x="540" y="131" font-size="14" font-weight="700" fill="#1E8E5A">Supabase</text>
+<rect x="980" y="110" width="380" height="600" rx="6" fill="#F7F8F9" stroke="#232F3E" stroke-width="1.5"/>
+<rect x="980" y="110" width="30" height="30" rx="4" fill="#232F3E"/><use href="#s-cloud" xlink:href="#s-cloud" x="983" y="113" width="24" height="24"/>
+<text x="1020" y="131" font-size="14" font-weight="700" fill="#232F3E">Model backends</text>
+<text x="1350" y="131" font-size="12" fill="#545B64" text-anchor="end">one, or a mix</text>
+<rect x="500" y="750" width="860" height="150" rx="6" fill="#FFF5FA" stroke="#E7157B" stroke-width="1.5"/>
+<rect x="500" y="750" width="30" height="30" rx="4" fill="#E7157B"/><use href="#s-globe" xlink:href="#s-globe" x="503" y="753" width="24" height="24"/>
+<text x="540" y="771" font-size="14" font-weight="700" fill="#E7157B">Evaluation and tracing</text>
+<text x="1350" y="771" font-size="12" fill="#545B64" text-anchor="end">in CI and on every turn</text>
+<rect x="516" y="276" width="368" height="300" rx="6" fill="#FFFFFF" stroke="#1E8E5A" stroke-width="1.2" stroke-dasharray="5 4"/>
+<text x="590" y="296" font-size="12" font-weight="700" fill="#1E8E5A">Inside the gateway</text>
+<g fill="none" stroke="#16191F" stroke-width="1.75"><path d="M372 190 H526" marker-end="url(#arrow)"/>
+<path d="M530 216 H376" stroke-dasharray="6 4" marker-end="url(#arrow)"/>
+<path d="M558 226 V306" marker-end="url(#arrow)"/>
+<path d="M558 366 V398" marker-end="url(#arrow)"/>
+<path d="M558 458 V490" marker-end="url(#arrow)"/>
+<path d="M870 518 H940 V198 H1006" marker-end="url(#arrow)"/>
+<path d="M940 358 H1006" marker-end="url(#arrow)"/>
+<path d="M940 518 H1006" marker-end="url(#arrow)"/>
+<path d="M800 344 H830 V232" stroke-dasharray="2 4" marker-end="url(#arrow)"/>
+<path d="M880 576 V746" marker-end="url(#arrow)"/>
+<path d="M1128 712 V786" stroke-dasharray="6 4" marker-end="url(#arrow)"/></g>
+<text x="822" y="262" font-size="11" fill="#545B64" text-anchor="end">reply, no model</text>
+<text x="1136" y="742" font-size="11" fill="#545B64">usage, latency</text>
+<text x="892" y="740" font-size="11" fill="#545B64">every turn</text>
+<rect x="60" y="170" width="56" height="56" rx="8" fill="#3B48CC"/><use href="#g-chat" xlink:href="#g-chat" x="60" y="170" width="56" height="56"/>
+<text x="130" y="193" font-size="15" font-weight="700" fill="#16191F">Assistant panel, tool runner</text>
+<text x="130" y="211" font-size="12.5" fill="#545B64">Unchanged: same tools, same Undo</text>
+<rect x="60" y="330" width="56" height="56" rx="8" fill="#3B48CC"/><use href="#g-spark" xlink:href="#g-spark" x="60" y="330" width="56" height="56"/>
+<text x="130" y="353" font-size="15" font-weight="700" fill="#16191F">Small model in the browser</text>
+<text x="130" y="371" font-size="12.5" fill="#545B64">WebGPU · 1–3B parameters</text>
+<text x="130" y="389" font-size="12.5" fill="#545B64">Optional: offline commands</text>
+<rect x="60" y="490" width="56" height="56" rx="8" fill="#3B48CC"/><use href="#g-mic" xlink:href="#g-mic" x="60" y="490" width="56" height="56"/>
+<text x="130" y="513" font-size="15" font-weight="700" fill="#16191F">Speech and page text on device</text>
+<text x="130" y="531" font-size="12.5" fill="#545B64">Whisper (small) · Tesseract</text>
+<text x="130" y="549" font-size="12.5" fill="#545B64">Optional: nothing leaves the phone</text>
+<rect x="530" y="170" width="56" height="56" rx="8" fill="#ED7100"/><use href="#g-bolt" xlink:href="#g-bolt" x="530" y="170" width="56" height="56"/>
+<text x="600" y="193" font-size="15" font-weight="700" fill="#16191F">Edge Function: assistant</text>
+<text x="600" y="211" font-size="12.5" fill="#545B64">Model-neutral gateway · quota · keys</text>
+<rect x="530" y="310" width="56" height="56" rx="8" fill="#1E8E5A"/><use href="#g-list" xlink:href="#g-list" x="530" y="310" width="56" height="56"/>
+<text x="600" y="333" font-size="15" font-weight="700" fill="#16191F">Command parser</text>
+<text x="600" y="351" font-size="12.5" fill="#545B64">Simple commands, no model</text>
+<rect x="530" y="402" width="56" height="56" rx="8" fill="#1E8E5A"/><use href="#g-fork" xlink:href="#g-fork" x="530" y="402" width="56" height="56"/>
+<text x="600" y="425" font-size="15" font-weight="700" fill="#16191F">Router</text>
+<text x="600" y="443" font-size="12.5" fill="#545B64">Small model first; large model for</text>
+<text x="600" y="461" font-size="12.5" fill="#545B64">questions and multi-step requests</text>
+<rect x="530" y="494" width="56" height="56" rx="8" fill="#1E8E5A"/><use href="#g-plug" xlink:href="#g-plug" x="530" y="494" width="56" height="56"/>
+<text x="600" y="517" font-size="15" font-weight="700" fill="#16191F">Adapters</text>
+<text x="600" y="535" font-size="12.5" fill="#545B64">Anthropic Messages API or</text>
+<text x="600" y="553" font-size="12.5" fill="#545B64">OpenAI-compatible API</text>
+<rect x="530" y="630" width="56" height="56" rx="8" fill="#C925D1"/><use href="#g-db" xlink:href="#g-db" x="530" y="630" width="56" height="56"/>
+<text x="600" y="653" font-size="15" font-weight="700" fill="#16191F">Postgres · pgvector</text>
+<text x="600" y="671" font-size="12.5" fill="#545B64">Full-text and semantic search</text>
+<use href="#g-shield" xlink:href="#g-shield" x="573" y="618" width="24" height="24"/>
+<rect x="1010" y="170" width="56" height="56" rx="8" fill="#01A88D"/><use href="#g-spark" xlink:href="#g-spark" x="1010" y="170" width="56" height="56"/>
+<text x="1080" y="193" font-size="15" font-weight="700" fill="#16191F">Claude Opus 5.5</text>
+<text x="1080" y="211" font-size="12.5" fill="#545B64">Anthropic API, paid per token</text>
+<text x="1080" y="229" font-size="12.5" fill="#545B64">Best tool use; hardest requests</text>
+<rect x="1010" y="330" width="56" height="56" rx="8" fill="#8C4FFF"/><use href="#g-cloud" xlink:href="#g-cloud" x="1010" y="330" width="56" height="56"/>
+<text x="1080" y="353" font-size="15" font-weight="700" fill="#16191F">Hosted open models</text>
+<text x="1080" y="371" font-size="12.5" fill="#545B64">Open-weight 8B–70B, per token</text>
+<text x="1080" y="389" font-size="12.5" fill="#545B64">OpenAI-compatible endpoints</text>
+<rect x="1010" y="490" width="56" height="56" rx="8" fill="#232F3E"/><use href="#g-chip" xlink:href="#g-chip" x="1010" y="490" width="56" height="56"/>
+<text x="1080" y="513" font-size="15" font-weight="700" fill="#16191F">Your GPU server</text>
+<text x="1080" y="531" font-size="12.5" fill="#545B64">vLLM, open 8B model, one 24 GB GPU</text>
+<text x="1080" y="549" font-size="12.5" fill="#545B64">Whisper, OCR; private network</text>
+<rect x="760" y="790" width="56" height="56" rx="8" fill="#E7157B"/><use href="#g-list" xlink:href="#g-list" x="760" y="790" width="56" height="56"/>
+<text x="830" y="813" font-size="15" font-weight="700" fill="#16191F">Evaluation set</text>
+<text x="830" y="831" font-size="12.5" fill="#545B64">~200 requests, expected tool calls</text>
+<text x="830" y="849" font-size="12.5" fill="#545B64">Page photos with checked text</text>
+<rect x="1100" y="790" width="56" height="56" rx="8" fill="#E7157B"/><use href="#g-chart" xlink:href="#g-chart" x="1100" y="790" width="56" height="56"/>
+<text x="1170" y="813" font-size="15" font-weight="700" fill="#16191F">Traces and metrics</text>
+<text x="1170" y="831" font-size="12.5" fill="#545B64">Tool accuracy, p95 latency</text>
+<text x="1170" y="849" font-size="12.5" fill="#545B64">Cost per turn, reader feedback</text>
+<circle cx="450" cy="190" r="11" fill="#16191F"/><text x="450" y="194.5" font-size="12" font-weight="700" fill="#FFFFFF" text-anchor="middle">1</text>
+<circle cx="558" cy="266" r="11" fill="#16191F"/><text x="558" y="270.5" font-size="12" font-weight="700" fill="#FFFFFF" text-anchor="middle">2</text>
+<circle cx="558" cy="382" r="11" fill="#16191F"/><text x="558" y="386.5" font-size="12" font-weight="700" fill="#FFFFFF" text-anchor="middle">3</text>
+<circle cx="558" cy="474" r="11" fill="#16191F"/><text x="558" y="478.5" font-size="12" font-weight="700" fill="#FFFFFF" text-anchor="middle">4</text>
+<circle cx="940" cy="280" r="11" fill="#16191F"/><text x="940" y="284.5" font-size="12" font-weight="700" fill="#FFFFFF" text-anchor="middle">4</text>
+<circle cx="972" cy="518" r="11" fill="#16191F"/><text x="972" y="522.5" font-size="12" font-weight="700" fill="#FFFFFF" text-anchor="middle">5</text>
+<circle cx="880" cy="680" r="11" fill="#16191F"/><text x="880" y="684.5" font-size="12" font-weight="700" fill="#FFFFFF" text-anchor="middle">6</text>
+<circle cx="128" cy="315" r="11" fill="#16191F"/><text x="128" y="319.5" font-size="12" font-weight="700" fill="#FFFFFF" text-anchor="middle">7</text>
+<rect x="40" y="750" width="380" height="150" rx="6" fill="#FFFFFF" stroke="#AAB7B8" stroke-width="1.2"/>
+<text x="60" y="778" font-size="14" font-weight="700" fill="#16191F">Key</text>
+<path d="M60 804 H110" fill="none" stroke="#16191F" stroke-width="1.75" marker-end="url(#arrow)"/>
+<text x="124" y="808" font-size="12.5" fill="#16191F">Request</text>
+<path d="M230 804 H280" fill="none" stroke="#16191F" stroke-width="1.75" stroke-dasharray="6 4" marker-end="url(#arrow)"/>
+<text x="294" y="808" font-size="12.5" fill="#16191F">Reply or data</text>
+<path d="M60 836 H110" fill="none" stroke="#16191F" stroke-width="1.75" stroke-dasharray="2 4" marker-end="url(#arrow)"/>
+<text x="124" y="840" font-size="12.5" fill="#16191F">Shortcut, no model</text>
+<circle cx="71" cy="870" r="11" fill="#16191F"/><text x="71" y="874.5" font-size="12" font-weight="700" fill="#FFFFFF" text-anchor="middle">n</text>
+<text x="124" y="874" font-size="12.5" fill="#16191F">Step, explained below</text>
+<use href="#g-shield" xlink:href="#g-shield" x="268" y="858" width="24" height="24"/>
+<text x="300" y="874" font-size="12.5" fill="#16191F">RLS applies</text>
+<line x1="40" y1="932" x2="1360" y2="932" stroke="#D5DBDB" stroke-width="1"/>
+<circle cx="51" cy="964" r="11" fill="#16191F"/><text x="51" y="968.5" font-size="12" font-weight="700" fill="#FFFFFF" text-anchor="middle">1</text>
+<text x="72" y="962" font-size="13" fill="#16191F">The browser sends the message, exactly as</text>
+<text x="72" y="979" font-size="13" fill="#545B64">in the main design.</text>
+<circle cx="51" cy="1012" r="11" fill="#16191F"/><text x="51" y="1016.5" font-size="12" font-weight="700" fill="#FFFFFF" text-anchor="middle">2</text>
+<text x="72" y="1010" font-size="13" fill="#16191F">The command parser answers simple commands</text>
+<text x="72" y="1027" font-size="13" fill="#545B64">("add word lading") without any model.</text>
+<circle cx="51" cy="1060" r="11" fill="#16191F"/><text x="51" y="1064.5" font-size="12" font-weight="700" fill="#FFFFFF" text-anchor="middle">3</text>
+<text x="72" y="1058" font-size="13" fill="#16191F">The router tries the small model first, and a large</text>
+<text x="72" y="1075" font-size="13" fill="#545B64">one for questions and multi-step requests.</text>
+<circle cx="491" cy="964" r="11" fill="#16191F"/><text x="491" y="968.5" font-size="12" font-weight="700" fill="#FFFFFF" text-anchor="middle">4</text>
+<text x="512" y="962" font-size="13" fill="#16191F">An adapter speaks the chosen API; the tool</text>
+<text x="512" y="979" font-size="13" fill="#545B64">schemas are the same for every model.</text>
+<circle cx="491" cy="1012" r="11" fill="#16191F"/><text x="491" y="1016.5" font-size="12" font-weight="700" fill="#FFFFFF" text-anchor="middle">5</text>
+<text x="512" y="1010" font-size="13" fill="#16191F">A self-hosted model runs on vLLM, reachable only</text>
+<text x="512" y="1027" font-size="13" fill="#545B64">by the gateway; tool calls are schema-checked.</text>
+<circle cx="491" cy="1060" r="11" fill="#16191F"/><text x="491" y="1064.5" font-size="12" font-weight="700" fill="#FFFFFF" text-anchor="middle">6</text>
+<text x="512" y="1058" font-size="13" fill="#16191F">Every turn is traced and scored against the</text>
+<text x="512" y="1075" font-size="13" fill="#545B64">evaluation set before any model is switched.</text>
+<circle cx="931" cy="964" r="11" fill="#16191F"/><text x="931" y="968.5" font-size="12" font-weight="700" fill="#FFFFFF" text-anchor="middle">7</text>
+<text x="952" y="962" font-size="13" fill="#16191F">Optional, later: a small model, Whisper and</text>
+<text x="952" y="979" font-size="13" fill="#545B64">Tesseract run in the browser, offline.</text>
+</svg>
